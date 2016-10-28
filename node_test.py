@@ -9,6 +9,8 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(sys_node.get_pressure("psi"), 8)
         self.assertAlmostEqual(sys_node.get_pressure("Pascal"), 8*6894.757)
         self.assertAlmostEqual(sys_node.get_pressure('KPa'), 8*6.894757)
+        sys_node.set_pressure(40000, 'Pascal')
+        self.assertAlmostEqual(sys_node.get_pressure('psi'), 40000/6894.757)
 
     def test_elevation(self):
         sys_node = Node()

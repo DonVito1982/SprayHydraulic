@@ -7,13 +7,19 @@ class Node:
         self.elevation = None
 
     def set_pressure(self, value, unit):
-        self.pressure = physics.Pressure(value, unit)
+        if self.pressure:
+            self.pressure.set_single_value(value, unit)
+        else:
+            self.pressure = physics.Pressure(value, unit)
 
     def get_pressure(self, unit):
         return self.pressure.values[unit]
 
     def set_elevation(self, value, unit):
-        self.elevation = physics.Elevation(value, unit)
+        if self.elevation:
+            self.elevation.set_single_value(value, unit)
+        else:
+            self.elevation = physics.Length(value, unit)
 
     def get_elevation(self, unit):
         return self.elevation.values[unit]
