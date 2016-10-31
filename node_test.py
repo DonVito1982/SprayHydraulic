@@ -1,5 +1,6 @@
 import unittest
-from Nodes import *
+from nodes import *
+from pipes import *
 
 
 class NodeTests(unittest.TestCase):
@@ -7,16 +8,74 @@ class NodeTests(unittest.TestCase):
         sys_node = Node()
         sys_node.set_pressure(8, "psi")
         self.assertEqual(sys_node.get_pressure("psi"), 8)
-        self.assertAlmostEqual(sys_node.get_pressure("Pascal"), 8*6894.757)
-        self.assertAlmostEqual(sys_node.get_pressure('KPa'), 8*6.894757)
-        sys_node.set_pressure(40000, 'Pascal')
+        self.assertAlmostEqual(sys_node.get_pressure("Pa"), 8*6894.757)
+        self.assertAlmostEqual(sys_node.get_pressure('kPa'), 8*6.894757)
+        self.assertAlmostEqual(sys_node.get_pressure('mH2O'), 8*0.70309)
+        sys_node.set_pressure(40000, 'Pa')
         self.assertAlmostEqual(sys_node.get_pressure('psi'), 40000/6894.757)
+        sys_node.set_pressure(100, 'mH2O')
+        self.assertAlmostEqual(sys_node.get_pressure('kPa'), 980.638)
 
     def test_elevation(self):
         sys_node = Node()
         sys_node.set_elevation(8, 'm')
         self.assertEqual(sys_node.get_elevation('m'), 8)
-        self.assertAlmostEqual(sys_node.get_elevation('ft'), 8*3.2808)
+        self.assertAlmostEqual(sys_node.get_elevation('ft'), 8*3.2808399)
+
+
+class PipeTests(unittest.TestCase):
+    def test_length(self):
+        sys_pipe = Pipe()
+        sys_pipe.set_length(2, 'm')
+        self.assertEqual(sys_pipe.get_length('m'), 2)
+        self.assertAlmostEqual(sys_pipe.get_length('ft'), 2*3.2808399, 4)
+        self.assertAlmostEqual(sys_pipe.get_length('in'), 24 * 3.2808399, 4)
+        sys_pipe.set_length(12, 'in')
+        self.assertEqual(sys_pipe.get_length('ft'), 1)
+
+    def test_input(self):
+        input_node = Node()
+        cur_pipe = Pipe()
+        cur_pipe.set_input(input_node)
+        self.assertEqual(cur_pipe.get_input(), input_node)
+        input_node.set_output_pipe(cur_pipe)
+        self.assertTrue(cur_pipe in input_node.get_output_pipes())
+
+    def test_output(self):
+        output_node = Node()
+        cur_pipe = Pipe()
+        cur_pipe.set_output(output_node)
+        self.assertEqual(cur_pipe.get_output(), output_node)
+        output_node.set_input_pipe(cur_pipe)
+        self.assertTrue(cur_pipe in output_node.get_input_pipes())
+
+    def test_inner_diam(self):
+        cur_pipe = Pipe()
+        cur_pipe.set_inner_diam(12, 'in')
+        self.assertEqual(cur_pipe.get_inner_diam('in'), 12)
+        self.assertEqual(cur_pipe.get_inner_diam('ft'), 1)
+
+    def test_vol_flow(self):
+        sys_pype = Pipe()
+        sys_pype.set_vol_flow(200, 'gpm')
+        self.assertEqual(sys_pype.get_vol_flow('gpm'), 200)
+        self.assertAlmostEqual(sys_pype.get_vol_flow('m3/H'), 45.4176)
+
+    def test_hazen_williams_loss(self):
+        cur_pipe = Pipe()
+        cur_pipe.set_length(82, 'ft')
+        cur_pipe.set_inner_diam(4.026, 'in')
+        cur_pipe.set_vol_flow(200, 'gpm')
+        loss = cur_pipe.haz_will_loss()
+        self.assertAlmostEqual(loss, 1.51399, 4)
+
+    def test_negative_flow(self):
+        cur_pipe = Pipe()
+        cur_pipe.set_length(82, 'ft')
+        cur_pipe.set_inner_diam(4.026, 'in')
+        cur_pipe.set_vol_flow(-200, 'gpm')
+        loss = cur_pipe.haz_will_loss()
+        self.assertAlmostEqual(loss, -1.51399, 4)
 
 
 if __name__ == '__main__':

@@ -25,18 +25,29 @@ class Measure(object):
 
 class Pressure(Measure):
     """
-    This class will serve to instantiate pressure measures
+    This class will serve to instantiate _pressure measures
     """
-    units = ['psi', 'Pascal', 'KPa']
-    conversion = [[1, 6894.757, 6.894757],
-                  [1/6894.757, 1, 1e-3],
-                  [1/6.894757, 1e3, 1]]
+    units = ['psi', 'Pa', 'kPa', 'mH2O']
+    conversion = [[1, 6894.757, 6.894757, 0.70309],
+                  [1/6894.757, 1, 1e-3, 0.000101974],
+                  [1/6.894757, 1e3, 1, 0.101974],
+                  [1.422295, 9806.38, 9.80638, 1]]
 
 
 class Length(Measure):
     """
     Serves to instantiate elevation measures
     """
-    units = ['m', 'ft']
-    conversion = [[1, 3.2808],
-                  [1/3.2808, 1]]
+    units = ['m', 'ft', 'in']
+    conversion = [[1, 3.2808399, 39.37007874],
+                  [1/3.2808399, 1, 12.0],
+                  [1/39.37007874, 1/12.0, 1]]
+
+
+class VolFlow(Measure):
+    """
+    Serves to instatiate volumetric flows
+    """
+    units = ['gpm', 'm3/H']
+    conversion = [[1, 0.227088],
+                  [25.01233, 1]]
