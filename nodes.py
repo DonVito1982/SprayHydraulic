@@ -9,12 +9,15 @@ class Node(object):
         self.elevation = None
         self.output_pipes = []
         self.input_pipes = []
+        self.__energy = None
+        self._name = None
 
     def set_pressure(self, value, unit):
         if self._pressure:
             self._pressure.set_single_value(value, unit)
         else:
             self._pressure = physics.Pressure(value, unit)
+        self.__energy = None
 
     def get_pressure(self, unit):
         return self._pressure.values[unit]
@@ -24,6 +27,7 @@ class Node(object):
             self.elevation.set_single_value(value, unit)
         else:
             self.elevation = physics.Length(value, unit)
+        self.__energy = None
 
     def get_elevation(self, unit):
         return self.elevation.values[unit]
@@ -39,3 +43,19 @@ class Node(object):
 
     def get_input_pipes(self):
         return self.input_pipes
+
+    def get_energy(self, unit):
+        if self.__energy:
+            return self.__energy.values[unit]
+        else:
+            elevation_m = self.get_elevation('m')
+            press_meters = self.get_pressure('mH2O')
+            self.__energy = physics.Pressure(elevation_m + press_meters, 'mH2O')
+            return self.__energy.values[unit]
+
+    def set_name(self, name):
+        assert isinstance(name, str)
+        self._name = name
+
+    def get_name(self):
+        return self._name
