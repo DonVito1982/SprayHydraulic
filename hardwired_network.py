@@ -2,33 +2,40 @@ import pipes
 import nodes
 import numpy
 
+C_POWER = 1.852
+
 network_nodes = []
 
 elevations = [100, 90, 65, 85]
 
-for x in range(4):
+# SET NODES
+node_count = 4
+for x in range(node_count):
     cur_node = nodes.Node()
     cur_node.set_pressure(0, 'psi')
     cur_node.set_elevation(elevations[x], 'm')
     network_nodes.append(cur_node)
 
+# SET PIPES
 lengths = [1500, 1500, 1500]
 diameters = [7.981, 6.065, 6.065]
 network_pipes = []
-for x in range(3):
+pipe_count = 3
+for x in range(pipe_count):
     cur_pipe = pipes.Pipe()
     cur_pipe.set_length(lengths[x], 'm')
     cur_pipe.set_inner_diam(diameters[x], 'in')
     cur_pipe.set_c_coefficient(100)
     network_pipes.append(cur_pipe)
 
+# SET INITIAL FLOW GUESSES
 vol_flows = numpy.array([10, -10, 20])
 
-flow_vector = numpy.zeros([4, 1])
-for cont in range(3):
+flow_vector = numpy.zeros([pipe_count + 1, 1])
+for cont in range(pipe_count):
     flow_vector[cont][0] = vol_flows[cont]
 
-flow_vector[3][0] = 1
+flow_vector[pipe_count][0] = 1
 
 
 def k_factor(pipe):
@@ -43,7 +50,9 @@ def k_factor(pipe):
     flow = pipe.get_vol_flow('gpm')
     c = pipe.get_c_coefficient()
     diam = pipe.get_inner_diam('in')
-    factor = (4.52 * length * abs(flow) ** 0.852) / (c ** 1.852 * diam ** 4.87)
+
+    factor = (4.52 * length * abs(flow) ** (C_POWER - 1)) / \
+             (c ** C_POWER * diam ** 4.87)
     return factor
 
 
@@ -52,11 +61,12 @@ def flow_jacob(pipe):
     flow = pipe.get_vol_flow('gpm')
     c = pipe.get_c_coefficient()
     diam = pipe.get_inner_diam('in')
-    factor = (8.37104 * abs(flow) ** 0.852 * length) / \
-             (c ** 1.852 * diam ** 4.87)
+    factor = (4.52 * C_POWER * abs(flow) ** (C_POWER - 1) * length) / \
+             (c ** C_POWER * diam ** 4.87)
     return factor
 
-jacobian = numpy.zeros([3, 3])
+
+jacobian = numpy.zeros([pipe_count, pipe_count])
 
 
 def f_module(vertical_vector):
@@ -65,13 +75,14 @@ def f_module(vertical_vector):
         total += vertical_vector[module_counter][0] ** 2
     return total
 
+
 iterations = 0
 f_results = numpy.array([[2], [2]])
 print f_module(f_results)
 
 while f_module(f_results) > 0.00001:
 
-    for x in range(3):
+    for x in range(pipe_count):
         network_pipes[x].set_vol_flow(flow_vector[x][0], 'gpm')
 
     f_matrix = numpy.array([[1, -1, -1, 0]])
@@ -92,13 +103,13 @@ while f_module(f_results) > 0.00001:
     print
 
     flow_equation = [1, -1, -1]
-    for x in range(3):
+    for x in range(pipe_count):
         jacobian[0][x] = flow_equation[x]
 
     row_1 = [-flow_jacob(network_pipes[0]), -flow_jacob(network_pipes[1]), 0]
     row_2 = [-flow_jacob(network_pipes[0]), 0, -flow_jacob(network_pipes[2])]
 
-    for x in range(3):
+    for x in range(pipe_count):
         jacobian[1][x] = row_1[x]
         jacobian[2][x] = row_2[x]
 
