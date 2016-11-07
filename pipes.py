@@ -1,6 +1,9 @@
 import physics
 
 
+C_POWER = 1.852
+
+
 class Pipe(object):
     def __init__(self):
         self.length = None
@@ -40,7 +43,6 @@ class Pipe(object):
         self.output_node = node
 
     def get_output(self):
-        # type: () -> Node
         return self.output_node
 
     def set_c_coefficient(self, value):
@@ -49,14 +51,15 @@ class Pipe(object):
     def get_c_coefficient(self):
         return self.c_coefficient
 
-    def hazen_williams_loss(self):
+    def hazen_williams_loss(self, unit):
         length_ft = self.get_length('ft')
-        flow_gpm = self.get_vol_flow('gpm')
+        flow = self.get_vol_flow('gpm')
         diam_in = self.get_inner_diam('in')
         c_coefficient = self.c_coefficient
-        delta_press = (length_ft * 4.52 * flow_gpm * abs(flow_gpm) ** 0.85) / \
-                      (c_coefficient ** 1.85 * diam_in ** 4.87)
-        return delta_press
+        delta_press = (length_ft * 4.52 * flow * abs(flow) ** (C_POWER-1)) / \
+                      (c_coefficient ** C_POWER * diam_in ** 4.87)
+        pressure_loss = physics.Pressure(delta_press, 'psi')
+        return pressure_loss.values[unit]
 
     def set_vol_flow(self, value, unit):
         if self.vol_flow:

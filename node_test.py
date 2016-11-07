@@ -19,9 +19,11 @@ class NodeTests(unittest.TestCase):
 
     def test_elevation(self):
         sys_node = Node()
+        other_node = sys_node
         sys_node.set_elevation(8, 'm')
         self.assertEqual(sys_node.get_elevation('m'), 8)
         self.assertAlmostEqual(sys_node.get_elevation('ft'), 8*3.2808399)
+        self.assertEqual(other_node.get_elevation('m'), 8)
 
     def test_energy(self):
         sys_node = Node()
@@ -35,6 +37,29 @@ class NodeTests(unittest.TestCase):
         sys_node = Node()
         sys_node.set_name('1')
         self.assertEqual(sys_node.get_name(), '1')
+
+    def test_energy_pressure_elevation_combo(self):
+        sys_node = Node()
+        sys_node.set_elevation(20, 'm')
+        sys_node.set_energy(35, 'mH2O')
+        self.assertEqual(sys_node.get_pressure('mH2O'), 15)
+        sys_node.set_pressure(10, 'mH2O')
+        self.assertEqual(sys_node.get_energy('mH2O'), 30)
+
+    def test_input_pipe(self):
+        sys_node = Node()
+        sys_pipe = Pipe()
+        sys_pipe2 = Pipe()
+        sys_node.set_input_pipe(sys_pipe)
+        sys_node.set_input_pipe(sys_pipe2)
+        self.assertTrue(sys_pipe in sys_node.get_input_pipes())
+        self.assertTrue(sys_pipe2 in sys_node.get_input_pipes())
+
+    def test_output_pipe(self):
+        sys_node = Node()
+        sys_pipe = Pipe()
+        sys_node.set_output_pipe(sys_pipe)
+        self.assertTrue(sys_pipe in sys_node.get_output_pipes())
 
 
 class PipeTests(unittest.TestCase):
@@ -81,8 +106,8 @@ class PipeTests(unittest.TestCase):
         cur_pipe.set_inner_diam(4.026, 'in')
         cur_pipe.set_vol_flow(200, 'gpm')
         cur_pipe.set_c_coefficient(100)
-        loss = cur_pipe.hazen_williams_loss()
-        self.assertAlmostEqual(loss, 1.51399, 4)
+        loss = cur_pipe.hazen_williams_loss('psi')
+        self.assertAlmostEqual(loss, 1.5160886, 4)
 
     def test_negative_flow_loss(self):
         cur_pipe = Pipe()
@@ -90,8 +115,8 @@ class PipeTests(unittest.TestCase):
         cur_pipe.set_inner_diam(4.026, 'in')
         cur_pipe.set_vol_flow(-200, 'gpm')
         cur_pipe.set_c_coefficient(100)
-        loss = cur_pipe.hazen_williams_loss()
-        self.assertAlmostEqual(loss, -1.51399, 4)
+        loss = cur_pipe.hazen_williams_loss('psi')
+        self.assertAlmostEqual(loss, -1.5160886, 4)
 
     def test_c_coefficient(self):
         cur_pipe = Pipe()

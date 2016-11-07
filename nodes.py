@@ -59,3 +59,12 @@ class Node(object):
 
     def get_name(self):
         return self._name
+
+    def set_energy(self, value, unit):
+        if self.__energy:
+            self.__energy.set_single_value(value, unit)
+        else:
+            self.__energy = physics.Pressure(value, unit)
+        if self.elevation:
+            self.set_pressure(self.get_energy('mH2O') -
+                              self.get_elevation('m'), 'mH2O')
