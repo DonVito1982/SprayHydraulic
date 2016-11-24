@@ -8,7 +8,7 @@ class Pipe(object):
     def __init__(self):
         self.length = None
         self._input_node = None
-        self.output_node = None
+        self._output_node = None
         self.inner_diam = None
         self.vol_flow = None
         self.c_coefficient = None
@@ -39,11 +39,13 @@ class Pipe(object):
     def input_node(self, node):
         self._input_node = node
 
-    def set_output(self, node):
-        self.output_node = node
+    @property
+    def output_node(self):
+        return self._output_node
 
-    def get_output(self):
-        return self.output_node
+    @output_node.setter
+    def output_node(self, node):
+        self._output_node = node
 
     def set_c_coefficient(self, value):
         self.c_coefficient = value

@@ -83,8 +83,8 @@ class PipeTests(unittest.TestCase):
     def test_output(self):
         output_node = Node()
         cur_pipe = Pipe()
-        cur_pipe.set_output(output_node)
-        self.assertEqual(cur_pipe.get_output(), output_node)
+        cur_pipe.output_node = output_node
+        self.assertEqual(cur_pipe.output_node, output_node)
         output_node.set_input_pipe(cur_pipe)
         self.assertTrue(cur_pipe in output_node.get_input_pipes())
 

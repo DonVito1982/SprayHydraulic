@@ -4,7 +4,7 @@ class Measure(object):
 
     def __init__(self, value=None, unit=None):
         self.values = {}
-        if unit is not None:
+        if unit:
             self.set_single_value(value, unit)
 
     def set_single_value(self, value, unit):
