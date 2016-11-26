@@ -53,12 +53,14 @@ class Node(object):
             self.__energy = physics.Pressure(elevation_m + press_meters, 'mH2O')
             return self.__energy.values[unit]
 
-    def set_name(self, name):
-        assert isinstance(name, str)
-        self._name = name
-
-    def get_name(self):
+    @property
+    def name(self):
         return self._name
+
+    @name.setter
+    def name(self, name):
+        name = str(name)
+        self._name = name
 
     def set_energy(self, value, unit):
         if self.__energy:

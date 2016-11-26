@@ -35,8 +35,8 @@ class NodeTests(unittest.TestCase):
 
     def test_name(self):
         sys_node = Node()
-        sys_node.set_name('1')
-        self.assertEqual(sys_node.get_name(), '1')
+        sys_node.name = 1
+        self.assertEqual(sys_node.name, '1')
 
     def test_energy_pressure_elevation_combo(self):
         sys_node = Node()
