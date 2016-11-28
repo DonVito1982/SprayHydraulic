@@ -123,6 +123,11 @@ class PipeTests(unittest.TestCase):
         cur_pipe.set_c_coefficient(100)
         self.assertEqual(cur_pipe.get_c_coefficient(), 100)
 
+    def test_name(self):
+        cur_pipe = Pipe()
+        cur_pipe.name = 1
+        self.assertEqual(cur_pipe.name, "1")
+
 
 if __name__ == '__main__':
     unittest.main()

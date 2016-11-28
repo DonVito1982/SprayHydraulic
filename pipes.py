@@ -12,6 +12,7 @@ class Pipe(object):
         self.inner_diam = None
         self.vol_flow = None
         self.c_coefficient = None
+        self._name = None
 
     def set_length(self, value, unit):
         if self.length:
@@ -30,6 +31,14 @@ class Pipe(object):
 
     def get_inner_diam(self, unit):
         return self.inner_diam.values[unit]
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = str(name)
 
     @property
     def input_node(self):
