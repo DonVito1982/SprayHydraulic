@@ -13,6 +13,12 @@ class Pipe(object):
         self.c_coefficient = None
         self._name = None
 
+    def is_complete(self):
+        return bool(self.length and
+                    self.output_node and
+                    self.input_node and
+                    self.inner_diam)
+
     def set_length(self, value, unit):
         if self.length:
             self.length.set_single_value(value, unit)
@@ -66,7 +72,7 @@ class Pipe(object):
         flow = self.get_vol_flow('gpm')
         diam_in = self.get_inner_diam('in')
         c_coefficient = self.c_coefficient
-        delta_press = (length_ft * 4.52 * flow * abs(flow) ** (C_POWER-1)) / \
+        delta_press = (length_ft * 4.52 * flow * abs(flow) ** (C_POWER - 1)) / \
                       (c_coefficient ** C_POWER * diam_in ** 4.87)
         pressure_loss = physics.Pressure(delta_press, 'psi')
         return pressure_loss.values[unit]

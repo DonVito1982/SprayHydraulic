@@ -1,5 +1,4 @@
-class NameException(Exception):
-    pass
+from pipes import C_POWER
 
 
 class PNetwork (object):
@@ -23,7 +22,7 @@ class PNetwork (object):
         for node in self.get_nodes():
             if node.name == name:
                 return node
-        raise NameException
+        raise IndexError
 
     @staticmethod
     def node_upstream_pipe(node, pipe):
@@ -34,3 +33,11 @@ class PNetwork (object):
     def node_downstream_pipe(node, pipe):
         node.set_output_pipe(pipe)
         pipe.input_node = node
+
+    @staticmethod
+    def k_factor(pipe):
+        length = pipe.get_length('ft')
+        c = pipe.get_c_coefficient()
+        diam = pipe.get_inner_diam('in')
+        factor = (4.52 * length) / (c ** C_POWER * diam ** 4.87)
+        return factor

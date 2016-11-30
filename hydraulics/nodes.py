@@ -1,33 +1,43 @@
-import physics
+from hydraulics import physics
 
 
 class Node(object):
-    """The nodes in a pipe network"""
-
     def __init__(self):
-        self._pressure = None
+        self._in_pressure = None
         self.elevation = None
         self.output_pipes = []
         self.input_pipes = []
-        self.__energy = None
         self._name = None
-
-    def set_pressure(self, value, unit):
-        if self._pressure:
-            self._pressure.set_single_value(value, unit)
-        else:
-            self._pressure = physics.Pressure(value, unit)
-        self.__energy = None
-
-    def get_pressure(self, unit):
-        return self._pressure.values[unit]
+        self.in_energy = None
 
     def set_elevation(self, value, unit):
         if self.elevation:
             self.elevation.set_single_value(value, unit)
         else:
             self.elevation = physics.Length(value, unit)
-        self.__energy = None
+        self.in_energy = None
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        name = str(name)
+        self._name = name
+
+
+class ConnectionNode(Node):
+    """The nodes in a pipe network"""
+    def set_in_pressure(self, value, unit):
+        if self._in_pressure:
+            self._in_pressure.set_single_value(value, unit)
+        else:
+            self._in_pressure = physics.Pressure(value, unit)
+        self.in_energy = None
+
+    def get_in_pressure(self, unit):
+        return self._in_pressure.values[unit]
 
     def get_elevation(self, unit):
         return self.elevation.values[unit]
@@ -44,29 +54,20 @@ class Node(object):
     def get_input_pipes(self):
         return self.input_pipes
 
-    def get_energy(self, unit):
-        if self.__energy:
-            return self.__energy.values[unit]
+    def get_in_energy(self, unit):
+        if self.in_energy:
+            return self.in_energy.values[unit]
         else:
             elevation_m = self.get_elevation('m')
-            press_meters = self.get_pressure('mH2O')
-            self.__energy = physics.Pressure(elevation_m + press_meters, 'mH2O')
-            return self.__energy.values[unit]
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        name = str(name)
-        self._name = name
+            press_meters = self.get_in_pressure('mH2O')
+            self.in_energy = physics.Pressure(elevation_m + press_meters, 'mH2O')
+            return self.in_energy.values[unit]
 
     def set_energy(self, value, unit):
-        if self.__energy:
-            self.__energy.set_single_value(value, unit)
+        if self.in_energy:
+            self.in_energy.set_single_value(value, unit)
         else:
-            self.__energy = physics.Pressure(value, unit)
+            self.in_energy = physics.Pressure(value, unit)
         if self.elevation:
-            self.set_pressure(self.get_energy('mH2O') -
-                              self.get_elevation('m'), 'mH2O')
+            self.set_in_pressure(self.get_in_energy('mH2O') -
+                                 self.get_elevation('m'), 'mH2O')

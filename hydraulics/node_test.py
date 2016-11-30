@@ -6,24 +6,24 @@ from pipes import *
 
 class NodeTests(unittest.TestCase):
     def test_creation(self):
-        sys_node = Node()
-        self.assertTrue(isinstance(sys_node, Node))
+        sys_node = ConnectionNode()
+        self.assertTrue(isinstance(sys_node, ConnectionNode))
 
     def test_pressure(self):
-        sys_node = Node()
-        sys_node.set_pressure(8, "psi")
-        self.assertEqual(sys_node.get_pressure("psi"), 8)
-        self.assertAlmostEqual(sys_node.get_pressure("Pa"), 8*6894.757)
-        self.assertAlmostEqual(sys_node.get_pressure('kPa'), 8*6.894757)
-        self.assertAlmostEqual(sys_node.get_pressure('mH2O'), 8*0.703088907)
-        sys_node.set_pressure(40000, 'Pa')
-        self.assertAlmostEqual(sys_node.get_pressure('psi'), 40000/6894.757)
-        sys_node.set_pressure(100, 'mH2O')
-        self.assertAlmostEqual(sys_node.get_pressure('kPa'), 980.638)
-        sys_node.set_pressure(15, 'psi')
+        sys_node = ConnectionNode()
+        sys_node.set_in_pressure(8, "psi")
+        self.assertEqual(sys_node.get_in_pressure("psi"), 8)
+        self.assertAlmostEqual(sys_node.get_in_pressure("Pa"), 8 * 6894.757)
+        self.assertAlmostEqual(sys_node.get_in_pressure('kPa'), 8 * 6.894757)
+        self.assertAlmostEqual(sys_node.get_in_pressure('mH2O'), 8 * 0.703088907)
+        sys_node.set_in_pressure(40000, 'Pa')
+        self.assertAlmostEqual(sys_node.get_in_pressure('psi'), 40000 / 6894.757)
+        sys_node.set_in_pressure(100, 'mH2O')
+        self.assertAlmostEqual(sys_node.get_in_pressure('kPa'), 980.638)
+        sys_node.set_in_pressure(15, 'psi')
 
     def test_elevation(self):
-        sys_node = Node()
+        sys_node = ConnectionNode()
         other_node = sys_node
         sys_node.set_elevation(8, 'm')
         self.assertEqual(sys_node.get_elevation('m'), 8)
@@ -31,28 +31,28 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(other_node.get_elevation('m'), 8)
 
     def test_energy(self):
-        sys_node = Node()
+        sys_node = ConnectionNode()
         sys_node.set_elevation(20, 'm')
-        sys_node.set_pressure(20, 'mH2O')
-        self.assertEqual(sys_node.get_energy('mH2O'), 40)
-        sys_node.set_pressure(15, 'psi')
-        self.assertAlmostEqual(sys_node.get_energy('psi'), 43.44590462)
+        sys_node.set_in_pressure(20, 'mH2O')
+        self.assertEqual(sys_node.get_in_energy('mH2O'), 40)
+        sys_node.set_in_pressure(15, 'psi')
+        self.assertAlmostEqual(sys_node.get_in_energy('psi'), 43.44590462)
 
     def test_name(self):
-        sys_node = Node()
+        sys_node = ConnectionNode()
         sys_node.name = 1
         self.assertEqual(sys_node.name, '1')
 
     def test_energy_pressure_elevation_combo(self):
-        sys_node = Node()
+        sys_node = ConnectionNode()
         sys_node.set_elevation(20, 'm')
         sys_node.set_energy(35, 'mH2O')
-        self.assertEqual(sys_node.get_pressure('mH2O'), 15)
-        sys_node.set_pressure(10, 'mH2O')
-        self.assertEqual(sys_node.get_energy('mH2O'), 30)
+        self.assertEqual(sys_node.get_in_pressure('mH2O'), 15)
+        sys_node.set_in_pressure(10, 'mH2O')
+        self.assertEqual(sys_node.get_in_energy('mH2O'), 30)
 
     def test_input_pipe(self):
-        sys_node = Node()
+        sys_node = ConnectionNode()
         sys_pipe = Pipe()
         sys_pipe2 = Pipe()
         sys_node.set_input_pipe(sys_pipe)
@@ -61,7 +61,7 @@ class NodeTests(unittest.TestCase):
         self.assertTrue(sys_pipe2 in sys_node.get_input_pipes())
 
     def test_output_pipe(self):
-        sys_node = Node()
+        sys_node = ConnectionNode()
         sys_pipe = Pipe()
         sys_node.set_output_pipe(sys_pipe)
         self.assertTrue(sys_pipe in sys_node.get_output_pipes())
@@ -78,7 +78,7 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(sys_pipe.get_length('ft'), 1)
 
     def test_input(self):
-        input_node = Node()
+        input_node = ConnectionNode()
         cur_pipe = Pipe()
         cur_pipe.input_node = input_node
         self.assertEqual(cur_pipe.input_node, input_node)
@@ -86,7 +86,7 @@ class PipeTests(unittest.TestCase):
         self.assertTrue(cur_pipe in input_node.get_output_pipes())
 
     def test_output(self):
-        output_node = Node()
+        output_node = ConnectionNode()
         cur_pipe = Pipe()
         cur_pipe.output_node = output_node
         self.assertEqual(cur_pipe.output_node, output_node)
@@ -132,6 +132,60 @@ class PipeTests(unittest.TestCase):
         cur_pipe = Pipe()
         cur_pipe.name = 1
         self.assertEqual(cur_pipe.name, "1")
+
+    def test_diam_completeness(self):
+        cur_pipe = Pipe()
+        cur_pipe.name = 1
+        node0 = ConnectionNode()
+        node1 = ConnectionNode()
+        cur_pipe.output_node = node1
+        cur_pipe.input_node = node0
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        self.assertFalse(cur_pipe.is_complete())
+
+    def test_length_completeness(self):
+        cur_pipe = Pipe()
+        cur_pipe.name = 1
+        node0 = ConnectionNode()
+        node1 = ConnectionNode()
+        cur_pipe.output_node = node1
+        cur_pipe.input_node = node0
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_inner_diam(10, 'in')
+        self.assertFalse(cur_pipe.is_complete())
+
+    def test_input_completeness(self):
+        cur_pipe = Pipe()
+        cur_pipe.name = 1
+        node1 = ConnectionNode()
+        cur_pipe.output_node = node1
+        cur_pipe.set_inner_diam(10, 'in')
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        self.assertFalse(cur_pipe.is_complete())
+
+    def test_output_completeness(self):
+        cur_pipe = Pipe()
+        cur_pipe.name = 1
+        node0 = ConnectionNode()
+        cur_pipe.input_node = node0
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        cur_pipe.set_inner_diam(10, 'in')
+        self.assertFalse(cur_pipe.is_complete())
+
+    def test_pipe_completeness(self):
+        cur_pipe = Pipe()
+        cur_pipe.name = 1
+        node0 = ConnectionNode()
+        node1 = ConnectionNode()
+        cur_pipe.output_node = node1
+        cur_pipe.input_node = node0
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        cur_pipe.set_inner_diam(10, 'in')
+        self.assertTrue(cur_pipe.is_complete())
 
 
 if __name__ == '__main__':
