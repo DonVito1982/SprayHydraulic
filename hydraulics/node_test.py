@@ -1,9 +1,14 @@
 import unittest
+
 from nodes import *
 from pipes import *
 
 
 class NodeTests(unittest.TestCase):
+    def test_creation(self):
+        sys_node = Node()
+        self.assertTrue(isinstance(sys_node, Node))
+
     def test_pressure(self):
         sys_node = Node()
         sys_node.set_pressure(8, "psi")

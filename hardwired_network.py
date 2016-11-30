@@ -1,6 +1,6 @@
-import pipes
-import nodes
 import numpy
+
+from hydraulics import pipes, nodes
 
 network_nodes = []
 

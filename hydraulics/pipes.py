@@ -1,6 +1,5 @@
 import physics
 
-
 C_POWER = 1.852
 
 
