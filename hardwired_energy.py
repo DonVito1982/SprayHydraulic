@@ -8,10 +8,19 @@ elevations = [100, 85, 65, 65, 70, 70]
 names = [0, 1, 2, 3, 4, 5]
 
 # SET NODES
+#  END NODES
+for cont6 in range(4):
+    cur_node = nodes.EndNode()
+    cur_node.set_elevation(elevations[cont6], 'm')
+    cur_node.name = names[cont6]
+    network_nodes.append(cur_node)
+
 node_count = len(elevations)
-for node_index in range(node_count):
+end_count = 4
+
+for node_index in range(end_count, node_count):
     cur_node = nodes.ConnectionNode()
-    cur_node.set_in_pressure(0, 'psi')
+    cur_node.set_pressure(0, 'psi')
     cur_node.set_elevation(elevations[node_index], 'm')
     cur_node.name = names[node_index]
     network_nodes.append(cur_node)
@@ -67,33 +76,15 @@ network_nodes[4].set_energy(energy_4, 'psi')
 network_nodes[5].set_energy(energy_5, 'psi')
 
 
-def k_factor(pipe, is_printed=False):
-    length = pipe.get_length('ft')
-    c = pipe.get_c_coefficient()
-    diam = pipe.get_inner_diam('in')
-    factor = (4.52 * length) / (c ** pipes.C_POWER * diam ** 4.87)
-    if is_printed:
-        print length
-        # print c
-        print diam
-    return factor
-
-
-def pipe_flow(pipe):
-    input_energy = pipe.input_node.get_in_energy('psi')
-    output_energy = pipe.output_node.get_in_energy('psi')
-    if input_energy - output_energy == 0:
-        return 0
-    energy_ratio = (input_energy - output_energy) / k_factor(pipe)
-    q_flow = energy_ratio * abs(energy_ratio) ** (1 / pipes.C_POWER - 1)
-    return q_flow
-
-
-print pipe_flow(network_pipes[0])
+print network_pipes[0].calculate_vol_flow()
 print "That was pipe #0"
 print
 
-active_nodes = [4, 5]
+active_nodes = []
+for cont in range(node_count):
+    if isinstance(network_nodes[cont], nodes.ConnectionNode):
+        active_nodes.append(cont)
+
 problem_size = len(active_nodes)
 
 
@@ -103,9 +94,9 @@ def f_equations():
         partial_flow = 0
         f_node = network_nodes[active_node]
         for pipe in f_node.get_input_pipes():
-            partial_flow += pipe_flow(pipe)
+            partial_flow += pipe.calculate_vol_flow()
         for pipe in f_node.get_output_pipes():
-            partial_flow -= pipe_flow(pipe)
+            partial_flow -= pipe.calculate_vol_flow()
         resp[active_nodes.index(active_node)][0] = partial_flow
     return resp
 
@@ -115,26 +106,26 @@ jacobian = np.zeros([problem_size, problem_size])
 
 def cell_jacob(current_pipes, evaluated_node):
     partial_jac = 0
-    current_energy = evaluated_node.get_in_energy('psi')
+    current_energy = evaluated_node.get_energy('psi')
     exponent = 1 / pipes.C_POWER - 1
     for connected_pipe in current_pipes['input']:
-        k_fac = k_factor(connected_pipe)
+        k_fac = connected_pipe.k_flow()
         if connected_pipe.output_node == evaluated_node:
-            input_energy = connected_pipe.input_node.get_in_energy('psi')
+            input_energy = connected_pipe.input_node.get_energy('psi')
             partial_jac -= (1 / (pipes.C_POWER * k_fac)) * abs(
                 (input_energy - current_energy) / k_fac) ** exponent
         if connected_pipe.input_node == evaluated_node:
-            output_energy = connected_pipe.output_node.get_in_energy('psi')
+            output_energy = connected_pipe.output_node.get_energy('psi')
             partial_jac += (1 / (pipes.C_POWER * k_fac)) * abs(
                 (current_energy - output_energy) / k_fac) ** exponent
     for connected_pipe in current_pipes['output']:
-        k_fac = k_factor(connected_pipe)
+        k_fac = connected_pipe.k_flow()
         if connected_pipe.output_node == evaluated_node:
-            input_energy = connected_pipe.input_node.get_in_energy('psi')
+            input_energy = connected_pipe.input_node.get_energy('psi')
             partial_jac += (1 / (pipes.C_POWER * k_fac)) * abs(
                 (input_energy - current_energy) / k_fac) ** exponent
         if connected_pipe.input_node == evaluated_node:
-            output_energy = connected_pipe.output_node.get_in_energy('psi')
+            output_energy = connected_pipe.output_node.get_energy('psi')
             partial_jac -= (1 / (pipes.C_POWER * k_fac)) * abs(
                 (current_energy - output_energy) / k_fac) ** exponent
     return partial_jac
@@ -159,7 +150,7 @@ while cont4 < 5:
     for active_node_index in range(problem_size):
         this_node = network_nodes[active_nodes[active_node_index]]
         this_node.set_energy(energy_vector[active_node_index][0], 'psi')
-        meter_energy.append(this_node.get_in_energy('mH2O'))
+        meter_energy.append(this_node.get_energy('mH2O'))
     energies.append(meter_energy)
     cont4 += 1
 print
@@ -169,14 +160,14 @@ for linea in energies:
 
 
 def set_q(pipe, is_printed=False):
-    up_energy = pipe.input_node.get_in_energy('psi')
-    down_energy = pipe.output_node.get_in_energy('psi')
+    up_energy = pipe.input_node.get_energy('psi')
+    down_energy = pipe.output_node.get_energy('psi')
     if is_printed:
         print "Up energy (%s):%.2f psi" % (pipe.input_node.name, up_energy)
         print "Down energy (%s):%.2f psi" % (pipe.output_node.name, down_energy)
-        print k_factor(pipe, True)
+        print pipe.k_flow()
         print
-    energy_ratio = (up_energy - down_energy) / k_factor(pipe)
+    energy_ratio = (up_energy - down_energy) / pipe.k_flow()
     flow = energy_ratio * abs(energy_ratio) ** (1 / pipes.C_POWER - 1)
     pipe.set_vol_flow(flow, 'gpm')
 

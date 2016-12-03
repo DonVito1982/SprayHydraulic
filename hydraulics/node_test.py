@@ -11,32 +11,32 @@ class NodeTests(unittest.TestCase):
 
     def test_pressure(self):
         sys_node = ConnectionNode()
-        sys_node.set_in_pressure(8, "psi")
-        self.assertEqual(sys_node.get_in_pressure("psi"), 8)
-        self.assertAlmostEqual(sys_node.get_in_pressure("Pa"), 8 * 6894.757)
-        self.assertAlmostEqual(sys_node.get_in_pressure('kPa'), 8 * 6.894757)
-        self.assertAlmostEqual(sys_node.get_in_pressure('mH2O'), 8 * 0.703088907)
-        sys_node.set_in_pressure(40000, 'Pa')
-        self.assertAlmostEqual(sys_node.get_in_pressure('psi'), 40000 / 6894.757)
-        sys_node.set_in_pressure(100, 'mH2O')
-        self.assertAlmostEqual(sys_node.get_in_pressure('kPa'), 980.638)
-        sys_node.set_in_pressure(15, 'psi')
+        sys_node.set_pressure(8, "psi")
+        self.assertEqual(sys_node.get_pressure("psi"), 8)
+        self.assertAlmostEqual(sys_node.get_pressure("Pa"), 8 * 6894.757)
+        self.assertAlmostEqual(sys_node.get_pressure('kPa'), 8 * 6.894757)
+        self.assertAlmostEqual(sys_node.get_pressure('mH2O'), 8 * 0.703088907)
+        sys_node.set_pressure(40000, 'Pa')
+        self.assertAlmostEqual(sys_node.get_pressure('psi'), 40000 / 6894.757)
+        sys_node.set_pressure(100, 'mH2O')
+        self.assertAlmostEqual(sys_node.get_pressure('kPa'), 980.638)
+        sys_node.set_pressure(15, 'psi')
 
     def test_elevation(self):
         sys_node = ConnectionNode()
         other_node = sys_node
         sys_node.set_elevation(8, 'm')
         self.assertEqual(sys_node.get_elevation('m'), 8)
-        self.assertAlmostEqual(sys_node.get_elevation('ft'), 8*3.2808399)
+        self.assertAlmostEqual(sys_node.get_elevation('ft'), 8 * 3.2808399)
         self.assertEqual(other_node.get_elevation('m'), 8)
 
     def test_energy(self):
         sys_node = ConnectionNode()
         sys_node.set_elevation(20, 'm')
-        sys_node.set_in_pressure(20, 'mH2O')
-        self.assertEqual(sys_node.get_in_energy('mH2O'), 40)
-        sys_node.set_in_pressure(15, 'psi')
-        self.assertAlmostEqual(sys_node.get_in_energy('psi'), 43.44590462)
+        sys_node.set_pressure(20, 'mH2O')
+        self.assertEqual(sys_node.get_energy('mH2O'), 40)
+        sys_node.set_pressure(15, 'psi')
+        self.assertAlmostEqual(sys_node.get_energy('psi'), 43.44590462)
 
     def test_name(self):
         sys_node = ConnectionNode()
@@ -47,9 +47,9 @@ class NodeTests(unittest.TestCase):
         sys_node = ConnectionNode()
         sys_node.set_elevation(20, 'm')
         sys_node.set_energy(35, 'mH2O')
-        self.assertEqual(sys_node.get_in_pressure('mH2O'), 15)
-        sys_node.set_in_pressure(10, 'mH2O')
-        self.assertEqual(sys_node.get_in_energy('mH2O'), 30)
+        self.assertEqual(sys_node.get_pressure('mH2O'), 15)
+        sys_node.set_pressure(10, 'mH2O')
+        self.assertEqual(sys_node.get_energy('mH2O'), 30)
 
     def test_input_pipe(self):
         sys_node = ConnectionNode()
@@ -66,13 +66,18 @@ class NodeTests(unittest.TestCase):
         sys_node.set_output_pipe(sys_pipe)
         self.assertTrue(sys_pipe in sys_node.get_output_pipes())
 
+    def test_end_node_energy(self):
+        node = EndNode()
+        node.set_elevation(10, 'm')
+        self.assertEqual(node.get_energy('mH2O'), 10)
+
 
 class PipeTests(unittest.TestCase):
     def test_length(self):
         sys_pipe = Pipe()
         sys_pipe.set_length(2, 'm')
         self.assertEqual(sys_pipe.get_length('m'), 2)
-        self.assertAlmostEqual(sys_pipe.get_length('ft'), 2*3.2808399, 4)
+        self.assertAlmostEqual(sys_pipe.get_length('ft'), 2 * 3.2808399, 4)
         self.assertAlmostEqual(sys_pipe.get_length('in'), 24 * 3.2808399, 4)
         sys_pipe.set_length(12, 'in')
         self.assertEqual(sys_pipe.get_length('ft'), 1)
@@ -186,6 +191,61 @@ class PipeTests(unittest.TestCase):
         cur_pipe.set_length(100, 'm')
         cur_pipe.set_inner_diam(10, 'in')
         self.assertTrue(cur_pipe.is_complete())
+
+    def test_k_factor(self):
+        cur_pipe = Pipe()
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        cur_pipe.set_inner_diam(10.75, 'in')
+        self.assertAlmostEqual(cur_pipe.k_flow(), 2.7807647e-6, 5)
+
+    def test_pipe_energy_flow(self):
+        cur_pipe = Pipe()
+        node0 = ConnectionNode()
+        node1 = ConnectionNode()
+        node0.set_elevation(10, 'm')
+        node1.set_elevation(10, 'm')
+        node0.set_pressure(11.26528826, 'psi')
+        node1.set_pressure(10, 'psi')
+        cur_pipe.output_node = node1
+        cur_pipe.input_node = node0
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        cur_pipe.set_inner_diam(10.75, 'in')
+        cur_pipe.calculate_vol_flow()
+        self.assertAlmostEqual(cur_pipe.get_vol_flow('gpm'), 1135.244, 5)
+
+    def test_pipe_negative_energy_flow(self):
+        cur_pipe = Pipe()
+        node0 = ConnectionNode()
+        node1 = ConnectionNode()
+        node0.set_elevation(10, 'm')
+        node1.set_elevation(10, 'm')
+        node1.set_pressure(11.26528826, 'psi')
+        node0.set_pressure(10, 'psi')
+        cur_pipe.output_node = node1
+        cur_pipe.input_node = node0
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        cur_pipe.set_inner_diam(10.75, 'in')
+        cur_pipe.calculate_vol_flow()
+        self.assertAlmostEqual(cur_pipe.get_vol_flow('gpm'), -1135.244, 5)
+
+    def test_pipe_zero_energy_flow(self):
+        cur_pipe = Pipe()
+        node0 = ConnectionNode()
+        node1 = ConnectionNode()
+        node0.set_elevation(10, 'm')
+        node1.set_elevation(10, 'm')
+        node1.set_pressure(10, 'psi')
+        node0.set_pressure(10, 'psi')
+        cur_pipe.output_node = node1
+        cur_pipe.input_node = node0
+        cur_pipe.set_c_coefficient(100)
+        cur_pipe.set_length(100, 'm')
+        cur_pipe.set_inner_diam(10.75, 'in')
+        cur_pipe.calculate_vol_flow()
+        self.assertAlmostEqual(cur_pipe.get_vol_flow('gpm'), 0, 5)
 
 
 if __name__ == '__main__':

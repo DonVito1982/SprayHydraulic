@@ -1,13 +1,16 @@
-from pipes import C_POWER
+from nodes import ConnectionNode
 
 
 class PNetwork (object):
     def __init__(self):
         self.net_nodes = []
         self.net_pipes = []
+        self._active_nodes = []
 
     def add_node(self, node):
         self.net_nodes.append(node)
+        if isinstance(node, ConnectionNode):
+            self._active_nodes = []
 
     def get_nodes(self):
         return self.net_nodes
@@ -34,10 +37,14 @@ class PNetwork (object):
         node.set_output_pipe(pipe)
         pipe.input_node = node
 
-    @staticmethod
-    def k_factor(pipe):
-        length = pipe.get_length('ft')
-        c = pipe.get_c_coefficient()
-        diam = pipe.get_inner_diam('in')
-        factor = (4.52 * length) / (c ** C_POWER * diam ** 4.87)
-        return factor
+    def get_active_nodes(self):
+        if not self._active_nodes:
+            cont = 0
+            for node in self.get_nodes():
+                if isinstance(node, ConnectionNode):
+                    self._active_nodes.append(cont)
+                cont += 1
+        return self._active_nodes
+
+    def get_problem_size(self):
+        return len(self._active_nodes)

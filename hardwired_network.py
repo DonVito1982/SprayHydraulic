@@ -10,7 +10,7 @@ elevations = [100, 85, 60, 85]
 node_count = 4
 for x in range(node_count):
     cur_node = nodes.ConnectionNode()
-    cur_node.set_in_pressure(0, 'psi')
+    cur_node.set_pressure(0, 'psi')
     cur_node.set_elevation(elevations[x], 'm')
     network_nodes.append(cur_node)
 
@@ -113,7 +113,7 @@ while f_module(f_results) > 0.00001:
 
     node_energies = []
     for cont in range(3):
-        node_energies.append(network_nodes[cont].get_in_energy('psi'))
+        node_energies.append(network_nodes[cont].get_energy('psi'))
 
     first_eq = [-k_factor(network_pipes[0]), -k_factor(network_pipes[1]), 0,
                 node_energies[0] - node_energies[1]]
@@ -142,13 +142,13 @@ while f_module(f_results) > 0.00001:
 
 print flow_vector
 
-n4_energy = network_nodes[0].get_in_energy('psi') - \
+n4_energy = network_nodes[0].get_energy('psi') - \
             network_pipes[0].hazen_williams_loss('psi')
 network_nodes[3].set_energy(n4_energy, 'psi')
 print
-print network_nodes[3].get_in_pressure('psi')
+print network_nodes[3].get_pressure('psi')
 
 n2_energy = n4_energy - network_pipes[1].hazen_williams_loss('psi')
 network_nodes[1].set_energy(n2_energy, 'psi')
 print
-print network_nodes[1].get_in_pressure('psi')
+print network_nodes[1].get_pressure('psi')

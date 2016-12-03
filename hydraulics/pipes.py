@@ -85,3 +85,21 @@ class Pipe(object):
 
     def get_vol_flow(self, unit):
         return self.vol_flow.values[unit]
+
+    def calculate_vol_flow(self):
+        input_energy = self.input_node.get_energy('psi')
+        output_energy = self.output_node.get_energy('psi')
+        if input_energy - output_energy == 0:
+            q_flow = 0
+        else:
+            energy_ratio = (input_energy - output_energy) / self.k_flow()
+            q_flow = energy_ratio * abs(energy_ratio) ** (1 / C_POWER - 1)
+        self.set_vol_flow(q_flow, 'gpm')
+        return q_flow
+
+    def k_flow(self):
+        length = self.get_length('ft')
+        c = self.get_c_coefficient()
+        diam = self.get_inner_diam('in')
+        factor = (4.52 * length) / (c ** C_POWER * diam ** 4.87)
+        return factor

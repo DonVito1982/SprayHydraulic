@@ -1,21 +1,25 @@
+from abc import abstractmethod, ABCMeta
+
 from hydraulics import physics
 
 
 class Node(object):
+    __metaclass__ = ABCMeta
+
     def __init__(self):
-        self._in_pressure = None
+        self._pressure = None
         self.elevation = None
         self.output_pipes = []
         self.input_pipes = []
         self._name = None
-        self.in_energy = None
+        self.energy = None
 
     def set_elevation(self, value, unit):
         if self.elevation:
             self.elevation.set_single_value(value, unit)
         else:
             self.elevation = physics.Length(value, unit)
-        self.in_energy = None
+        self.energy = None
 
     @property
     def name(self):
@@ -26,21 +30,21 @@ class Node(object):
         name = str(name)
         self._name = name
 
-
-class ConnectionNode(Node):
-    """The nodes in a pipe network"""
-    def set_in_pressure(self, value, unit):
-        if self._in_pressure:
-            self._in_pressure.set_single_value(value, unit)
-        else:
-            self._in_pressure = physics.Pressure(value, unit)
-        self.in_energy = None
-
-    def get_in_pressure(self, unit):
-        return self._in_pressure.values[unit]
-
     def get_elevation(self, unit):
         return self.elevation.values[unit]
+
+    @abstractmethod
+    def get_pressure(self, unit):
+        pass
+
+    def get_energy(self, unit):
+        if self.energy:
+            return self.energy.values[unit]
+        else:
+            elevation_m = self.get_elevation('m')
+            press_meters = self.get_pressure('mH2O')
+            self.energy = physics.Pressure(elevation_m + press_meters, 'mH2O')
+            return self.energy.values[unit]
 
     def set_output_pipe(self, pipe):
         self.output_pipes.append(pipe)
@@ -54,20 +58,29 @@ class ConnectionNode(Node):
     def get_input_pipes(self):
         return self.input_pipes
 
-    def get_in_energy(self, unit):
-        if self.in_energy:
-            return self.in_energy.values[unit]
+
+class ConnectionNode(Node):
+    """The nodes in a pipe network"""
+    def set_pressure(self, value, unit):
+        if self._pressure:
+            self._pressure.set_single_value(value, unit)
         else:
-            elevation_m = self.get_elevation('m')
-            press_meters = self.get_in_pressure('mH2O')
-            self.in_energy = physics.Pressure(elevation_m + press_meters, 'mH2O')
-            return self.in_energy.values[unit]
+            self._pressure = physics.Pressure(value, unit)
+        self.energy = None
+
+    def get_pressure(self, unit):
+        return self._pressure.values[unit]
 
     def set_energy(self, value, unit):
-        if self.in_energy:
-            self.in_energy.set_single_value(value, unit)
+        if self.energy:
+            self.energy.set_single_value(value, unit)
         else:
-            self.in_energy = physics.Pressure(value, unit)
+            self.energy = physics.Pressure(value, unit)
         if self.elevation:
-            self.set_in_pressure(self.get_in_energy('mH2O') -
-                                 self.get_elevation('m'), 'mH2O')
+            self.set_pressure(self.get_energy('mH2O') -
+                              self.get_elevation('m'), 'mH2O')
+
+
+class EndNode(Node):
+    def get_pressure(self, unit):
+        return 0
