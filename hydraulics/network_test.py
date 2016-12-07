@@ -33,7 +33,9 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(len(self.four_res.get_pipes()), 2)
 
     def test_node_upstream_pipe(self):
-        PNetwork.node_upstream_pipe(self.node0, self.pipe0)
+        self.four_res.add_node(self.node0)
+        self.four_res.add_pipe(self.pipe0)
+        self.four_res.connect_node_upstream_pipe(0, 0)
         self.assertTrue(self.pipe0 in self.node0.get_input_pipes())
         self.assertEqual(self.pipe0.output_node, self.node0)
 
@@ -44,11 +46,46 @@ class NetworkTests(unittest.TestCase):
         node1.name = 'n1'
         self.four_res.add_node(self.node0)
         self.four_res.add_node(node1)
-        self.assertEqual(self.four_res.node_by_name('n0').get_pressure('psi'), 25)
-        self.assertRaises(IndexError, lambda: self.four_res.node_by_name('n3'))
+        index = self.four_res.get_node_index_by_name('n0')
+        self.assertEqual(self.four_res.get_nodes()[index].get_pressure('psi'),
+                         25)
+        self.assertRaises(IndexError,
+                          lambda: self.four_res.get_node_index_by_name('n3'))
+
+    def test_search_pipe_by_name(self):
+        self.pipe0.name = 'p0'
+        pipe1 = Pipe()
+        pipe1.name = 'p1'
+        self.four_res.add_pipe(self.pipe0)
+        self.four_res.add_pipe(pipe1)
+        index = self.four_res.get_pipe_index_by_name('p0')
+        self.assertEqual(self.four_res.get_pipes()[index].get_length('m'),
+                         1000)
+        self.assertRaises(IndexError,
+                          lambda: self.four_res.get_pipe_index_by_name('n3'))
+
+    def test_network_node_name(self):
+        self.four_res.add_node(self.node0)
+        self.four_res.set_node_name(0, 'n0')
+        self.assertEqual(self.four_res.get_nodes()[0].name, 'n0')
+        self.assertEqual(self.node0.name, 'n0')
+
+    def test_repeated_name(self):
+        self.node0.name = 'n0'
+        self.four_res.add_node(self.node0)
+        node1 = ConnectionNode()
+        self.four_res.add_node(node1)
+        fail = False
+        try:
+            self.four_res.set_node_name(1, 'n0')
+        except IndexError:
+            fail = True
+        self.assertTrue(fail)
 
     def test_node_downstream_pipe(self):
-        PNetwork.node_downstream_pipe(self.node0, self.pipe0)
+        self.four_res.add_node(self.node0)
+        self.four_res.add_pipe(self.pipe0)
+        self.four_res.connect_node_downstream_pipe(0, 0)
         self.assertTrue(self.pipe0 in self.node0.get_output_pipes())
         self.assertEqual(self.pipe0.input_node, self.node0)
 
@@ -68,6 +105,46 @@ class NetworkTests(unittest.TestCase):
         node1 = ConnectionNode()
         self.four_res.add_node(node1)
         self.assertEqual(self.four_res.get_active_nodes(), [0, 1])
+
+    def test_pipe_name(self):
+        self.four_res.add_pipe(self.pipe0)
+        self.four_res.set_pipe_name(0, 'p1')
+        self.assertEqual(self.pipe0.name, 'p1')
+
+    def test_repeated_pipe_name(self):
+        self.pipe0.name = 'p0'
+        self.four_res.add_pipe(self.pipe0)
+        pipe1 = Pipe()
+        self.four_res.add_pipe(pipe1)
+        fail = False
+        try:
+            self.four_res.set_pipe_name(1, 'p0')
+        except IndexError:
+            fail = True
+        self.assertTrue(fail)
+
+    def test_f_equations(self):
+        self.node0.set_energy(25, 'mH2O')
+        node1 = EndNode()
+        node1.set_elevation(27, 'm')
+        node2 = EndNode()
+        node2.set_elevation(23, 'm')
+        self.four_res.add_pipe(self.pipe0)
+        self.four_res.add_node(self.node0)
+        self.four_res.add_node(node1)
+        self.four_res.add_node(node2)
+        pipe1 = Pipe()
+        pipe1.set_inner_diam(6, 'in')
+        pipe1.set_c_coefficient(100)
+        pipe1.set_length(800, 'm')
+        self.four_res.add_pipe(pipe1)
+        self.four_res.connect_node_upstream_pipe(0, 0)
+        self.four_res.connect_node_downstream_pipe(0, 1)
+        self.four_res.connect_node_downstream_pipe(1, 0)
+        self.four_res.connect_node_upstream_pipe(2, 1)
+        flow0 = self.pipe0.get_gpm_flow() - pipe1.get_gpm_flow()
+        self.assertEqual(float(self.four_res.f_equations()), flow0)
+
 
 if __name__ == '__main__':
     unittest.main()

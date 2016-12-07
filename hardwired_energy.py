@@ -76,7 +76,7 @@ network_nodes[4].set_energy(energy_4, 'psi')
 network_nodes[5].set_energy(energy_5, 'psi')
 
 
-print network_pipes[0].calculate_vol_flow()
+print network_pipes[0].get_gpm_flow()
 print "That was pipe #0"
 print
 
@@ -94,9 +94,9 @@ def f_equations():
         partial_flow = 0
         f_node = network_nodes[active_node]
         for pipe in f_node.get_input_pipes():
-            partial_flow += pipe.calculate_vol_flow()
+            partial_flow += pipe.get_gpm_flow()
         for pipe in f_node.get_output_pipes():
-            partial_flow -= pipe.calculate_vol_flow()
+            partial_flow -= pipe.get_gpm_flow()
         resp[active_nodes.index(active_node)][0] = partial_flow
     return resp
 
@@ -104,30 +104,12 @@ def f_equations():
 jacobian = np.zeros([problem_size, problem_size])
 
 
-def cell_jacob(current_pipes, evaluated_node):
+def cell_jacob(main_node, evaluated_node):
     partial_jac = 0
-    current_energy = evaluated_node.get_energy('psi')
-    exponent = 1 / pipes.C_POWER - 1
-    for connected_pipe in current_pipes['input']:
-        k_fac = connected_pipe.k_flow()
-        if connected_pipe.output_node == evaluated_node:
-            input_energy = connected_pipe.input_node.get_energy('psi')
-            partial_jac -= (1 / (pipes.C_POWER * k_fac)) * abs(
-                (input_energy - current_energy) / k_fac) ** exponent
-        if connected_pipe.input_node == evaluated_node:
-            output_energy = connected_pipe.output_node.get_energy('psi')
-            partial_jac += (1 / (pipes.C_POWER * k_fac)) * abs(
-                (current_energy - output_energy) / k_fac) ** exponent
-    for connected_pipe in current_pipes['output']:
-        k_fac = connected_pipe.k_flow()
-        if connected_pipe.output_node == evaluated_node:
-            input_energy = connected_pipe.input_node.get_energy('psi')
-            partial_jac += (1 / (pipes.C_POWER * k_fac)) * abs(
-                (input_energy - current_energy) / k_fac) ** exponent
-        if connected_pipe.input_node == evaluated_node:
-            output_energy = connected_pipe.output_node.get_energy('psi')
-            partial_jac -= (1 / (pipes.C_POWER * k_fac)) * abs(
-                (current_energy - output_energy) / k_fac) ** exponent
+    for connected_pipe in main_node.get_input_pipes():
+        partial_jac += connected_pipe.get_node_jacobian(evaluated_node)
+    for connected_pipe in main_node.get_output_pipes():
+        partial_jac -= connected_pipe.get_node_jacobian(evaluated_node)
     return partial_jac
 
 
@@ -137,11 +119,9 @@ cont4 = 0
 while cont4 < 5:
     for cont1 in range(problem_size):
         row_node = network_nodes[active_nodes[cont1]]
-        connected_pipes = {'input': row_node.get_input_pipes(),
-                           'output': row_node.get_output_pipes()}
         for cont2 in range(problem_size):
             col_node = network_nodes[active_nodes[cont2]]
-            jacobian[cont1][cont2] = cell_jacob(connected_pipes, col_node)
+            jacobian[cont1][cont2] = cell_jacob(row_node, col_node)
 
     f_results = f_equations()
     delta = -np.linalg.solve(jacobian, f_results)
