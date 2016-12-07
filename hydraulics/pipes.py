@@ -46,7 +46,8 @@ class Pipe(object):
     def get_length(self, unit):
         # type: (str) -> float
         """
-        Getter for the *length* attribute
+        Getter for the *length* attribute. Must be called
+        after :func: `set_length`.
         :param unit:
         :return:
         """
