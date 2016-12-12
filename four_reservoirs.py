@@ -71,4 +71,3 @@ print "Node  Pressures"
 for cont in range(node_count):
     print " %s    %6.3f psi" % (problem.get_nodes()[cont].name,
                                 problem.get_nodes()[cont].get_pressure('psi'))
-

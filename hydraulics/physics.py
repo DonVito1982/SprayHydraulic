@@ -1,3 +1,7 @@
+WMETER_TO_PSI = 1.422295231
+GAL_TO_LT = 3.7848
+
+
 class Measure(object):
     units = []
     conversion = [[]]
@@ -28,10 +32,10 @@ class Pressure(Measure):
     This class will serve to instantiate _pressure measures
     """
     units = ['psi', 'Pa', 'kPa', 'mH2O']
-    conversion = [[1, 6894.757, 6.894757, 0.703088907],
-                  [1/6894.757, 1, 1e-3, 0.000101974],
-                  [1/6.894757, 1e3, 1, 0.101974],
-                  [1.422295231, 9806.38, 9.80638, 1]]
+    conversion = [[1, 6894.757, 6.894757, 1 / WMETER_TO_PSI],
+                  [1 / 6894.757, 1, 1e-3, 0.000101974],
+                  [1 / 6.894757, 1e3, 1, 0.101974],
+                  [WMETER_TO_PSI, 9806.38, 9.80638, 1]]
 
 
 class Length(Measure):
@@ -40,14 +44,41 @@ class Length(Measure):
     """
     units = ['m', 'ft', 'in']
     conversion = [[1, 3.2808399, 39.37007874],
-                  [1/3.2808399, 1, 12.0],
-                  [1/39.37007874, 1/12.0, 1]]
+                  [1 / 3.2808399, 1, 12.0],
+                  [1 / 39.37007874, 1 / 12.0, 1]]
+
+
+class Volume(Measure):
+    units = ['lt', 'gal', 'm3']
+    conversion = [[1, 1 / GAL_TO_LT, 0.001],
+                  [GAL_TO_LT, 1, GAL_TO_LT / 1000],
+                  [1000, 1000 / GAL_TO_LT, 1]]
+
+
+class Time(Measure):
+    units = ['min', 'hr']
+    conversion = [[1, 1 / 60.0],
+                  [60.0, 1]]
 
 
 class VolFlow(Measure):
     """
     Serves to instantiate volumetric flows
     """
-    units = ['gpm', 'm3/H']
-    conversion = [[1, 0.227088],
-                  [25.01233, 1]]
+    units = ['gpm', 'm3/H', 'lpm']
+    gal_index = Volume.units.index('gal')
+    m3_index = Volume.units.index('m3')
+    gal_to_m3 = Volume.conversion[gal_index][m3_index]
+    conversion = [[1, gal_to_m3 * 60, Volume.conversion[1][0]],
+                  [Volume.conversion[2][1] * Time.conversion[0][1], 1,
+                   1000 / 60.0],
+                  [1 / GAL_TO_LT, 60 / 1000.0, 1]]
+
+
+class NozzleK(Measure):
+    units = ['gpm/psi^0.5', 'lpm/bar^0.5']
+    psi_index = Pressure.units.index('psi')
+    kPa_index = Pressure.units.index('kPa')
+    psi_to_kPa = Pressure.conversion[psi_index][kPa_index]
+    conversion = [[1, GAL_TO_LT * (100 / psi_to_kPa) ** .5],
+                  [((psi_to_kPa / 100) ** .5) / GAL_TO_LT, 1]]

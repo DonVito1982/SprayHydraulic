@@ -1,6 +1,6 @@
 import unittest
 
-from nodes import *
+from nodes import ConnectionNode, EndNode
 from pipes import *
 
 
@@ -98,6 +98,27 @@ class PipeTests(unittest.TestCase):
         output_node.set_input_pipe(self.sys_pipe)
         self.assertTrue(self.sys_pipe in output_node.get_input_pipes())
 
+    def test_false_output(self):
+        fail = False
+        try:
+            self.sys_pipe.output_node = 'nodo'
+        except ValueError:
+            fail = True
+        self.assertTrue(fail)
+
+    def test_repeated_output(self):
+        output_node = ConnectionNode()
+        other_node = ConnectionNode()
+        print "is output_node a connection node?"
+        print isinstance(output_node, ConnectionNode)
+        self.sys_pipe.output_node = output_node
+        fail = False
+        try:
+            self.sys_pipe.output_node = other_node
+        except IndexError:
+            fail = True
+        self.assertTrue(fail)
+
     def test_inner_diam(self):
         self.sys_pipe.set_inner_diam(12, 'in')
         self.assertEqual(self.sys_pipe.get_inner_diam('in'), 12)
@@ -107,6 +128,7 @@ class PipeTests(unittest.TestCase):
         self.sys_pipe.set_vol_flow(200, 'gpm')
         self.assertEqual(self.sys_pipe.get_vol_flow('gpm'), 200)
         self.assertAlmostEqual(self.sys_pipe.get_vol_flow('m3/H'), 45.4176)
+        self.assertAlmostEqual(self.sys_pipe.get_vol_flow('lpm'), 756.96)
 
     def test_hazen_williams_loss(self):
         self.sys_pipe.set_length(82, 'ft')
@@ -166,6 +188,16 @@ class PipeTests(unittest.TestCase):
         node0 = ConnectionNode()
         self.sys_pipe.input_node = node0
         self.sys_pipe.set_c_coefficient(100)
+        self.sys_pipe.set_length(100, 'm')
+        self.sys_pipe.set_inner_diam(10, 'in')
+        self.assertFalse(self.sys_pipe.is_complete())
+
+    def test_c_completeness(self):
+        self.sys_pipe.name = 1
+        node0 = ConnectionNode()
+        node1 = ConnectionNode()
+        self.sys_pipe.input_node = node0
+        self.sys_pipe.output_node = node1
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10, 'in')
         self.assertFalse(self.sys_pipe.is_complete())
@@ -243,8 +275,62 @@ class PipeTests(unittest.TestCase):
         self.sys_pipe.input_node = node_i
         self.sys_pipe.output_node = node_o
         result = 626.5655816
-        self.assertAlmostEqual(self.sys_pipe.get_node_jacobian(node_i), result, 5)
-        self.assertAlmostEqual(self.sys_pipe.get_node_jacobian(node_o), -result, 5)
+        self.assertAlmostEqual(self.sys_pipe.get_node_jacobian(node_i),
+                               result, 5)
+        self.assertAlmostEqual(self.sys_pipe.get_node_jacobian(node_o),
+                               -result, 5)
+
+
+class NozzleTests(unittest.TestCase):
+    def setUp(self):
+        self.nozzle0 = Nozzle()
+
+    def test_creation(self):
+        self.assertTrue(isinstance(self.nozzle0, Nozzle))
+
+    def test_input_node(self):
+        input_node = ConnectionNode()
+        other_node = ConnectionNode()
+        self.nozzle0.input_node = input_node
+        self.assertEqual(self.nozzle0.input_node, input_node)
+        fail = False
+        try:
+            self.nozzle0.input_node = other_node
+        except IndexError:
+            fail = True
+        self.assertTrue(fail)
+
+    def test_output(self):
+        output_node = EndNode()
+        self.nozzle0.output_node = output_node
+        self.assertEqual(self.nozzle0.output_node, output_node)
+
+    def test_end_output(self):
+        output_node = ConnectionNode()
+        fail = False
+        try:
+            self.nozzle0.output_node = output_node
+        except ValueError:
+            fail = True
+        self.assertTrue(fail)
+
+    def test_repeated_output(self):
+        output_node = EndNode()
+        other_node = EndNode()
+        self.nozzle0.output_node = output_node
+        fail = False
+        try:
+            self.nozzle0.output_node = other_node
+        except ValueError:
+            fail = True
+        self.assertTrue(fail)
+
+    def test_k_factor(self):
+        self.nozzle0.set_factor(1.2, 'gpm/psi^0.5')
+        k_lpm = self.nozzle0.get_factor('lpm/bar^0.5')
+        self.assertAlmostEqual(k_lpm, 17.296757, 5)
+        self.nozzle0.set_factor(17.29675758, 'lpm/bar^0.5')
+        self.assertAlmostEqual(self.nozzle0.get_factor('gpm/psi^0.5'), 1.2)
 
 
 if __name__ == '__main__':

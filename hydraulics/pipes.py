@@ -1,22 +1,116 @@
-import physics
+from abc import abstractmethod, ABCMeta
+
+from hydraulics import physics
+from hydraulics.nodes import Node, EndNode, ConnectionNode
 
 C_POWER = 1.852
 
 
-class Pipe(object):
+class Edge(object):
+    __metaclass__ = ABCMeta
+
+    def __init__(self):
+        self.vol_flow = None
+        self._name = None
+        self._input_node = None
+        self._output_node = None
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        self._name = str(name)
+
+    def set_vol_flow(self, value, unit):
+        if self.vol_flow:
+            self.vol_flow.set_single_value(value, unit)
+        else:
+            self.vol_flow = physics.VolFlow(value, unit)
+
+    def get_vol_flow(self, unit):
+        return self.vol_flow.values[unit]
+
+    @abstractmethod
+    def get_gpm_flow(self):
+        pass
+
+    @abstractmethod
+    def is_complete(self):
+        """
+        Tests completeness of whether or not the edge has all the information
+        to start calculating
+        :rtype: bool
+        """
+        pass
+
+    @abstractmethod
+    def get_node_jacobian(self, node):
+        pass
+
+
+class Nozzle(Edge):
+    def __init__(self):
+        super(Nozzle, self).__init__()
+        self.k_factor = None
+
+    def set_factor(self, value, unit):
+        if self.k_factor:
+            self.k_factor.set_single_value(value, unit)
+        else:
+            self.k_factor = physics.NozzleK(value, unit)
+
+    def get_factor(self, unit):
+        return self.k_factor.values[unit]
+
+    def get_gpm_flow(self):
+        return 0
+
+    def get_node_jacobian(self, node):
+        result = 0
+        if self.input_node == node:
+            k_factor = self.k_factor
+            diff = node.get_energy('psi') - self.output_node.get_energy('psi')
+            result += (k_factor / 2.0) * abs(k_factor * diff) ** (-0.5)
+        return result
+
+    def is_complete(self):
+        return bool(self.k_factor and self.input_node and self.output_node)
+
+    @property
+    def output_node(self):
+        return self._output_node
+
+    @output_node.setter
+    def output_node(self, node):
+        if self._output_node is None and isinstance(node, EndNode):
+            self._output_node = node
+        else:
+            raise ValueError
+
+    @property
+    def input_node(self):
+        return self._input_node
+
+    @input_node.setter
+    def input_node(self, node):
+        if self._input_node:
+            raise IndexError
+        self._input_node = node
+
+
+class Pipe(Edge):
     """A cylindrical pipe through which water flows
 
     It doesn't need any parameters for initializing, instead it's given
     attributes through the following methods
     """
     def __init__(self):
+        super(Pipe, self).__init__()
         self.length = None
-        self._input_node = None
-        self._output_node = None
         self.inner_diam = None
-        self.vol_flow = None
         self.c_coefficient = None
-        self._name = None
 
     def is_complete(self):
         """
@@ -25,9 +119,10 @@ class Pipe(object):
         :rtype: bool
         """
         return bool(self.length and
-                    self.output_node and
-                    self.input_node and
-                    self.inner_diam)
+                    self._output_node and
+                    self._input_node and
+                    self.inner_diam and
+                    self.c_coefficient)
 
     def set_length(self, value, unit):
         """
@@ -62,32 +157,6 @@ class Pipe(object):
     def get_inner_diam(self, unit):
         return self.inner_diam.values[unit]
 
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        self._name = str(name)
-
-    @property
-    def input_node(self):
-        return self._input_node
-
-    @input_node.setter
-    def input_node(self, node):
-        if self._input_node:
-            raise IndexError
-        self._input_node = node
-
-    @property
-    def output_node(self):
-        return self._output_node
-
-    @output_node.setter
-    def output_node(self, node):
-        self._output_node = node
-
     def set_c_coefficient(self, value):
         self.c_coefficient = value
 
@@ -103,15 +172,6 @@ class Pipe(object):
         delta_press = numerator / (c_coefficient ** C_POWER * diam_in ** 4.87)
         pressure_loss = physics.Pressure(delta_press, 'psi')
         return pressure_loss.values[unit]
-
-    def set_vol_flow(self, value, unit):
-        if self.vol_flow:
-            self.vol_flow.set_single_value(value, unit)
-        else:
-            self.vol_flow = physics.VolFlow(value, unit)
-
-    def get_vol_flow(self, unit):
-        return self.vol_flow.values[unit]
 
     def get_gpm_flow(self):
         in_ene = self.input_node.get_energy('psi')
@@ -145,3 +205,25 @@ class Pipe(object):
             result += (1 / (C_POWER * k_fac)) * abs(
                 (current_energy - output_energy) / k_fac) ** exponent
         return result
+
+    @property
+    def output_node(self):
+        return self._output_node
+
+    @output_node.setter
+    def output_node(self, node):
+        if self._output_node:
+            raise IndexError
+        if not isinstance(node, Node):
+            raise ValueError
+        self._output_node = node
+
+    @property
+    def input_node(self):
+        return self._input_node
+
+    @input_node.setter
+    def input_node(self, node):
+        if self._input_node:
+            raise IndexError
+        self._input_node = node
