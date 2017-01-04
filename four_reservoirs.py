@@ -1,6 +1,5 @@
-from hydraulics.nodes import EndNode, ConnectionNode
 from hydraulics.pipe_network import PNetwork
-from hydraulics.pipes import Pipe
+from hydraulics.pipes import Pipe, EndNode, ConnectionNode
 
 elevations = [100, 85, 65, 65, 70, 70]
 names = [0, 1, 2, 3, 4, 5]
@@ -36,7 +35,6 @@ for pipe_index in range(pipe_count):
     cur_pipe.name = pipe_index
     problem.add_pipe(cur_pipe)
 
-
 # SET CONNECTIVITY
 problem.connect_node_downstream_pipe(4, 2)
 problem.connect_node_upstream_pipe(4, 1)
@@ -49,25 +47,27 @@ problem.connect_node_downstream_pipe(5, 4)
 problem.connect_node_upstream_pipe(2, 3)
 problem.connect_node_upstream_pipe(3, 4)
 
-# SET INITIAL HEAD GUESS
-
-print problem.get_pipes()[0].get_gpm_flow()
-print "That was pipe #0"
-print
-
-problem.solve_shit()
+problem.solve_system()
 
 end_flows = []
 
 for cont5 in range(pipe_count):
     end_flows.append(problem.get_pipes()[cont5].get_gpm_flow())
 
-print
-print "Pipe   Flow (gpm)"
+# FLOW CHECK
+test_flows = [1135.2443, -383.5847, 751.6596, 394.3143, 357.3453]
+status = 'Ok'
 for cont in range(pipe_count):
-    print " %s      %9.4f" % (problem.get_pipes()[cont].name, end_flows[cont])
-print
-print "Node  Pressures"
+    cur_end = end_flows[cont]
+    if abs(cur_end - test_flows[cont]) > 1e-4:
+        status = 'not Ok'
+print "\nflow is %s" % status
+
+# PRESSURE CHECK
+test_press = [0, 0, 0, 0, 30.016, 7.383]
+status = 'Ok'
 for cont in range(node_count):
-    print " %s    %6.3f psi" % (problem.get_nodes()[cont].name,
-                                problem.get_nodes()[cont].get_pressure('psi'))
+    cur_press = problem.get_nodes()[cont].get_pressure('psi')
+    if abs(cur_press-test_press[cont]) > 1e-3:
+        status = 'not Ok'
+print "Pressure is %s" % status

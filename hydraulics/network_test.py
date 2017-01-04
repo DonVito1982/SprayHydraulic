@@ -1,8 +1,7 @@
 import unittest
 
-from pipes import Pipe
+from pipes import Pipe, ConnectionNode, EndNode
 from pipe_network import PNetwork
-from nodes import ConnectionNode, EndNode
 
 
 class NetworkTests(unittest.TestCase):
@@ -51,6 +50,7 @@ class NetworkTests(unittest.TestCase):
                          25)
         self.assertRaises(IndexError,
                           lambda: self.four_res.get_node_index_by_name('n3'))
+        self.assertEqual(self.four_res.get_node_index_by_name('n1'), 1)
 
     def test_search_pipe_by_name(self):
         self.pipe0.name = 'p0'
@@ -63,6 +63,7 @@ class NetworkTests(unittest.TestCase):
                          1000)
         self.assertRaises(IndexError,
                           lambda: self.four_res.get_pipe_index_by_name('n3'))
+        self.assertEqual(self.four_res.get_pipe_index_by_name('p1'), 1)
 
     def test_network_node_name(self):
         self.four_res.add_node(self.node0)
@@ -90,6 +91,7 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(self.pipe0.input_node, self.node0)
 
     def test_set_active_nodes(self):
+        self.assertEqual(self.four_res.get_active_nodes(), [])
         node1 = EndNode()
         node2 = ConnectionNode()
         self.four_res.add_node(self.node0)
