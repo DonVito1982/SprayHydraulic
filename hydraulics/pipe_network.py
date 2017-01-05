@@ -103,8 +103,10 @@ class PNetwork(object):
         return partial_jac
 
     def first_guess(self):
-        max_energy = 95
-        min_energy = 90
+        max_energy = self._get_max_energy()
+        # print max_energy
+        min_energy = self._get_min_energy()
+        # print min_energy
         guess = np.zeros([self.get_problem_size(), 1])
         for cont in range(self.get_problem_size()):
             guess[cont][0] = random.uniform(min_energy, max_energy)
@@ -125,19 +127,48 @@ class PNetwork(object):
         self.jacobian = np.zeros([self.size, self.size])
         self._set_active_nodes()
         initial_guess = self.first_guess()
-        self.iterate(initial_guess)
+        self._iterate(initial_guess)
 
-    def iterate(self, energy_vector):
+    def _iterate(self, energy_vector):
         iteration = 0
-        while iteration < 5:
+        f_results = self.f_equations()
+        while not self.has_converged(f_results):
             self.fill_jacobian()
             f_results = self.f_equations()
             delta = -np.linalg.solve(self.jacobian, f_results)
             energy_vector = np.add(energy_vector, delta)
             self.update_energies(energy_vector)
+            # self._inspect(energy_vector)
             iteration += 1
+        # print iteration
+
+    def has_converged(self, vector):
+        deviation = 0
+        for cont in range(self.size):
+            deviation += abs(vector[cont][0])
+        return deviation < 1e-4
+
+    def _inspect(self, vector):
+        format_string = ""
+        energies = []
+        for item in range(self.size):
+            format_string += "%8.4f  "
+            energies.append(vector[item][0])
+        print format_string % tuple(energies)
 
     def update_energies(self, energy_vector):
         for active_index in range(self.size):
             this_node = self.get_nodes()[self._active_nodes[active_index]]
             this_node.set_energy(energy_vector[active_index][0], 'psi')
+
+    def _get_max_energy(self):
+        max_energy = self.get_nodes()[0].get_energy('psi')
+        for node in self.get_nodes():
+            max_energy = max(max_energy, node.get_energy('psi'))
+        return max_energy
+
+    def _get_min_energy(self):
+        min_energy = self.get_nodes()[0].get_energy('psi')
+        for node in self.get_nodes():
+            min_energy = min(min_energy, node.get_energy('psi'))
+        return min_energy

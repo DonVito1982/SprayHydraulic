@@ -74,12 +74,21 @@ class Nozzle(Edge):
         return self.k_factor.values[unit]
 
     def get_gpm_flow(self):
-        return 0
+        in_ene = self.input_node.get_energy('psi')
+        out_ene = self.output_node.get_energy('psi')
+        if in_ene - out_ene == 0:
+            q_flow = 0
+        else:
+            energy_diff = (in_ene - out_ene)
+            k_fac = self.get_factor('gpm/psi^0.5')
+            q_flow = energy_diff * k_fac * (abs(energy_diff) ** (-0.5))
+        self.set_vol_flow(q_flow, 'gpm')
+        return q_flow
 
     def get_node_jacobian(self, node):
         result = 0
         if self.input_node == node:
-            k_factor = self.k_factor
+            k_factor = self.get_factor('gpm/psi^0.5')
             diff = node.get_energy('psi') - self.output_node.get_energy('psi')
             result += (k_factor / 2.0) * abs(k_factor * diff) ** (-0.5)
         return result

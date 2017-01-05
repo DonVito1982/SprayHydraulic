@@ -291,6 +291,18 @@ class NozzleTests(unittest.TestCase):
         self.nozzle0.set_factor(17.29675758, 'lpm/bar^0.5')
         self.assertAlmostEqual(self.nozzle0.get_factor('gpm/psi^0.5'), 1.2)
 
+    def test_gpm_flow(self):
+        self.nozzle0.set_factor(2, 'gpm/psi^0.5')
+        in_node = ConnectionNode()
+        in_node.set_elevation(5, 'm')
+        in_node.set_pressure(36, 'psi')
+        out_node = EndNode()
+        out_node.set_elevation(5, 'm')
+        self.nozzle0.input_node = in_node
+        self.nozzle0.output_node = out_node
+        nozzle_flow = self.nozzle0.get_gpm_flow()
+        self.assertAlmostEqual(nozzle_flow, 12)
+
 
 if __name__ == '__main__':
     unittest.main()
