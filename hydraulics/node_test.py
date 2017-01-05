@@ -1,6 +1,6 @@
 import unittest
 
-from pipes import ConnectionNode, Pipe, EndNode, Nozzle, Edge
+from pipes import ConnectionNode, Pipe, EndNode
 
 
 class NodeTests(unittest.TestCase):

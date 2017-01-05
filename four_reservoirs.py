@@ -33,34 +33,34 @@ for pipe_index in range(pipe_count):
     cur_pipe.set_inner_diam(inner_diameters[pipe_index], 'in')
     cur_pipe.set_c_coefficient(100)
     cur_pipe.name = pipe_index
-    problem.add_pipe(cur_pipe)
+    problem.add_edge(cur_pipe)
 
 # SET CONNECTIVITY
-problem.connect_node_downstream_pipe(4, 2)
-problem.connect_node_upstream_pipe(4, 1)
-problem.connect_node_upstream_pipe(4, 0)
-problem.connect_node_downstream_pipe(0, 0)
-problem.connect_node_downstream_pipe(1, 1)
-problem.connect_node_upstream_pipe(5, 2)
-problem.connect_node_downstream_pipe(5, 3)
-problem.connect_node_downstream_pipe(5, 4)
-problem.connect_node_upstream_pipe(2, 3)
-problem.connect_node_upstream_pipe(3, 4)
+problem.connect_node_downstream_edge(4, 2)
+problem.connect_node_upstream_edge(4, 1)
+problem.connect_node_upstream_edge(4, 0)
+problem.connect_node_downstream_edge(0, 0)
+problem.connect_node_downstream_edge(1, 1)
+problem.connect_node_upstream_edge(5, 2)
+problem.connect_node_downstream_edge(5, 3)
+problem.connect_node_downstream_edge(5, 4)
+problem.connect_node_upstream_edge(2, 3)
+problem.connect_node_upstream_edge(3, 4)
 
 problem.solve_system()
 
 end_flows = []
 
 for cont5 in range(pipe_count):
-    end_flows.append(problem.get_pipes()[cont5].get_gpm_flow())
+    end_flows.append(problem.get_edges()[cont5].get_gpm_flow())
 
 # FLOW CHECK
 test_flows = [1135.2443, -383.5847, 751.6596, 394.3143, 357.3453]
 status = 'Ok'
 for cont in range(pipe_count):
     cur_end = end_flows[cont]
-    if abs(cur_end - test_flows[cont]) > 1e-4:
-        status = 'not Ok'
+    cur_pipe = problem.get_edges()[cont]
+    print "p%s) flow %.3f" % (cur_pipe.name, cur_pipe.get_gpm_flow())
 print "\nflow is %s" % status
 
 # PRESSURE CHECK

@@ -6,7 +6,7 @@ import random
 class PNetwork(object):
     def __init__(self):
         self.net_nodes = []
-        self.net_pipes = []
+        self.net_edges = []
         self._active_nodes = []
         self.jacobian = None
         self.size = None
@@ -17,11 +17,11 @@ class PNetwork(object):
     def get_nodes(self):
         return self.net_nodes
 
-    def add_pipe(self, pipe):
-        self.net_pipes.append(pipe)
+    def add_edge(self, edge):
+        self.net_edges.append(edge)
 
-    def get_pipes(self):
-        return self.net_pipes
+    def get_edges(self):
+        return self.net_edges
 
     def get_node_index_by_name(self, name):
         cont = 0
@@ -31,25 +31,25 @@ class PNetwork(object):
             cont += 1
         raise IndexError
 
-    def get_pipe_index_by_name(self, name):
+    def get_edge_index_by_name(self, name):
         cont = 0
-        for pipe in self.get_pipes():
-            if pipe.name == name:
+        for edge in self.get_edges():
+            if edge.name == name:
                 return cont
             cont += 1
         raise IndexError
 
-    def connect_node_upstream_pipe(self, node_index, pipe_index):
+    def connect_node_upstream_edge(self, node_index, edge_index):
         node = self.get_nodes()[node_index]
-        pipe = self.get_pipes()[pipe_index]
-        node.set_input_pipe(pipe)
-        pipe.output_node = node
+        edge = self.get_edges()[edge_index]
+        node.set_input_pipe(edge)
+        edge.output_node = node
 
-    def connect_node_downstream_pipe(self, node_index, pipe_index):
+    def connect_node_downstream_edge(self, node_index, edge_index):
         node = self.get_nodes()[node_index]
-        pipe = self.get_pipes()[pipe_index]
-        node.set_output_pipe(pipe)
-        pipe.input_node = node
+        edge = self.get_edges()[edge_index]
+        node.set_output_pipe(edge)
+        edge.input_node = node
 
     def _set_active_nodes(self):
         self._active_nodes = []
@@ -74,10 +74,10 @@ class PNetwork(object):
         self.net_nodes[index].name = name
 
     def set_pipe_name(self, index, name):
-        for pipe in self.net_pipes:
+        for pipe in self.net_edges:
             if pipe.name == name:
                 raise IndexError
-        self.net_pipes[index].name = name
+        self.net_edges[index].name = name
 
     def f_equations(self):
         size = self.get_problem_size()
