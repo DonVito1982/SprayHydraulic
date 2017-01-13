@@ -1,6 +1,6 @@
 import unittest
 
-from pipes import ConnectionNode, Pipe, EndNode
+from pipes import ConnectionNode, Pipe, EndNode, InputNode
 
 
 class NodeTests(unittest.TestCase):
@@ -62,6 +62,18 @@ class NodeTests(unittest.TestCase):
         node = EndNode()
         node.set_elevation(10, 'm')
         self.assertEqual(node.get_energy('mH2O'), 10)
+
+    def test_initial_flow_output(self):
+        self.assertEqual(self.sys_node.get_output_flow('gpm'), 0)
+
+    def test_flow_output(self):
+        self.sys_node.set_output_flow(20, 'gpm')
+        self.assertEqual(self.sys_node.get_output_flow('gpm'), 20)
+        self.assertAlmostEqual(self.sys_node.get_output_flow('m3/H'), 4.5418, 4)
+
+    def test_input_node(self):
+        in_node = InputNode()
+        self.assertTrue(isinstance(in_node, ConnectionNode))
 
 
 if __name__ == '__main__':

@@ -7,9 +7,12 @@ class PNetwork(object):
     def __init__(self):
         self.net_nodes = []
         self.net_edges = []
-        self._active_nodes = []
+        self._active_node_indexes = []
         self.jacobian = None
         self.size = None
+        self.deleted_edge = None
+        self.detached_nozzle_index = None
+        self.unplugged_node_index = None
 
     def add_node(self, node):
         self.net_nodes.append(node)
@@ -51,21 +54,21 @@ class PNetwork(object):
         node.set_output_pipe(edge)
         edge.input_node = node
 
-    def _set_active_nodes(self):
-        self._active_nodes = []
+    def _set_active_nodes_indexes(self):
+        self._active_node_indexes = []
         node_count = 0
         for node in self.get_nodes():
             if isinstance(node, ConnectionNode):
-                self._active_nodes.append(node_count)
+                self._active_node_indexes.append(node_count)
             node_count += 1
 
     def get_active_nodes(self):
-        self._set_active_nodes()
-        return self._active_nodes
+        self._set_active_nodes_indexes()
+        return self._active_node_indexes
 
     def get_problem_size(self):
-        self._set_active_nodes()
-        return len(self._active_nodes)
+        self._set_active_nodes_indexes()
+        return len(self._active_node_indexes)
 
     def set_node_name(self, index, name):
         for node in self.net_nodes:
@@ -82,16 +85,21 @@ class PNetwork(object):
     def f_equations(self):
         size = self.get_problem_size()
         resp = np.zeros([size, 1])
-        self._set_active_nodes()
-        for active_node in self._active_nodes:
-            partial_flow = 0
-            f_node = self.get_nodes()[active_node]
-            for pipe in f_node.get_input_pipes():
-                partial_flow += pipe.get_gpm_flow()
-            for pipe in f_node.get_output_pipes():
-                partial_flow -= pipe.get_gpm_flow()
-            resp[self._active_nodes.index(active_node)][0] = partial_flow
+        self._set_active_nodes_indexes()
+        for node_index in self._active_node_indexes:
+            input_flow = self.get_node_input_flow(node_index)
+            resp[self._active_node_indexes.index(node_index)][0] = input_flow
         return resp
+
+    def get_node_input_flow(self, node_index):
+        partial_flow = 0
+        cur_node = self.get_nodes()[node_index]
+        for pipe in cur_node.get_input_pipes():
+            partial_flow += pipe.get_gpm_flow()
+        for pipe in cur_node.get_output_pipes():
+            partial_flow -= pipe.get_gpm_flow()
+        partial_flow -= cur_node.get_output_flow('gpm')
+        return partial_flow
 
     def _cell_jacob(self, row_index, col_index):
         partial_jac = 0
@@ -110,22 +118,22 @@ class PNetwork(object):
         guess = np.zeros([self.get_problem_size(), 1])
         for cont in range(self.get_problem_size()):
             guess[cont][0] = random.uniform(min_energy, max_energy)
-            cur_node = self.get_nodes()[self._active_nodes[cont]]
+            cur_node = self.get_nodes()[self._active_node_indexes[cont]]
             cur_node.set_energy(guess[cont][0], 'psi')
         return guess
 
     def fill_jacobian(self):
         for cont1 in range(self.size):
-            row_index = self._active_nodes[cont1]
+            row_index = self._active_node_indexes[cont1]
             for cont2 in range(self.size):
-                col_index = self._active_nodes[cont2]
+                col_index = self._active_node_indexes[cont2]
                 self.jacobian[cont1][cont2] = self._cell_jacob(row_index,
                                                                col_index)
 
     def solve_system(self):
         self.size = self.get_problem_size()
         self.jacobian = np.zeros([self.size, self.size])
-        self._set_active_nodes()
+        self._set_active_nodes_indexes()
         initial_guess = self.first_guess()
         self._iterate(initial_guess)
 
@@ -157,9 +165,9 @@ class PNetwork(object):
         print format_string % tuple(energies)
 
     def update_energies(self, energy_vector):
-        for active_index in range(self.size):
-            this_node = self.get_nodes()[self._active_nodes[active_index]]
-            this_node.set_energy(energy_vector[active_index][0], 'psi')
+        for index in range(self.size):
+            this_node = self.get_nodes()[self._active_node_indexes[index]]
+            this_node.set_energy(energy_vector[index][0], 'psi')
 
     def _get_max_energy(self):
         max_energy = self.get_nodes()[0].get_energy('psi')
@@ -172,3 +180,36 @@ class PNetwork(object):
         for node in self.get_nodes():
             min_energy = min(min_energy, node.get_energy('psi'))
         return min_energy
+
+    def detach_node_edge(self, node_index, edge_index):
+        detached_edge = self.get_edges()[edge_index]
+        detached_node = self.get_nodes()[node_index]
+        if detached_edge.input_node is detached_node:
+            connected_pipes = self.get_nodes()[node_index].get_output_pipes()
+            for e_index in range(len(connected_pipes)):
+                if connected_pipes[e_index] is detached_edge:
+                    self.get_nodes()[node_index].remove_output(e_index)
+            detached_edge.clear_input()
+        elif detached_edge.output_node is detached_node:
+            connected_pipes = self.get_nodes()[node_index].get_input_pipes()
+            for e_index in range(len(connected_pipes)):
+                if connected_pipes[e_index] is detached_edge:
+                    self.get_nodes()[node_index].remove_input(e_index)
+            detached_edge.clear_output()
+        else:
+            raise ValueError
+
+    def hold_nozzle(self, noz_index):
+        input_node_name = self.get_edges()[noz_index].input_node.name
+        node_index = self.get_node_index_by_name(input_node_name)
+        self.unplugged_node_index = node_index
+        self.detach_node_edge(node_index, noz_index)
+        self.detached_nozzle_index = noz_index
+        self.deleted_edge = self.net_edges.pop(noz_index)
+
+    def reinsert_nozzle(self):
+        self.net_edges.insert(self.detached_nozzle_index, self.deleted_edge)
+        self.connect_node_downstream_edge(self.unplugged_node_index,
+                                          self.detached_nozzle_index)
+        self.deleted_edge = None
+        self.detached_nozzle_index = None

@@ -1,6 +1,6 @@
 import unittest
 
-from pipes import Pipe, ConnectionNode, EndNode
+from pipes import Pipe, ConnectionNode, EndNode, Nozzle
 from pipe_network import PNetwork
 
 
@@ -138,6 +138,53 @@ class NetworkTests(unittest.TestCase):
         self.four_res.connect_node_upstream_edge(2, 1)
         flow0 = self.pipe0.get_gpm_flow() - pipe1.get_gpm_flow()
         self.assertEqual(float(self.four_res.f_equations()), flow0)
+
+    def test_delete_nozzle(self):
+        nozzle1 = Nozzle()
+        nozzle2 = Nozzle()
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.add_edge(nozzle1)
+        self.four_res.add_edge(nozzle2)
+        for index in range(3):
+            self.four_res.set_pipe_name(index, index)
+        self.four_res.add_node(self.node0)
+        self.four_res.connect_node_upstream_edge(0, 0)
+        self.four_res.connect_node_downstream_edge(0, 1)
+        self.four_res.hold_nozzle(1)
+        self.assertEqual(len(self.four_res.get_edges()), 2)
+        self.assertEqual(self.four_res.detached_nozzle_index, 1)
+        self.assertEqual(self.four_res.deleted_edge.name, '1')
+        self.assertEqual(self.four_res.get_nodes()[0].get_output_pipes(), [])
+        self.four_res.reinsert_nozzle()
+        self.assertEqual(len(self.four_res.get_edges()), 3)
+        self.assertEqual(self.four_res.get_edges()[1].name, '1')
+        self.assertEqual(self.four_res.deleted_edge, None)
+        output_name = self.four_res.get_nodes()[0].get_output_pipes()[0].name
+        self.assertEqual(output_name, '1')
+
+    def test_detach_node_and_downstream(self):
+        nozzle = Nozzle()
+        self.four_res.add_node(self.node0)
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.add_edge(nozzle)
+        self.four_res.connect_node_downstream_edge(0, 0)
+        self.four_res.detach_node_edge(0, 0)
+        self.assertEqual(self.four_res.get_nodes()[0].get_output_pipes(), [])
+        self.assertEqual(self.pipe0.input_node, None)
+        self.assertRaises(ValueError,
+                          lambda: self.four_res.detach_node_edge(0, 1))
+
+    def test_detach_node_and_upstream(self):
+        nozzle = Nozzle()
+        self.four_res.add_node(self.node0)
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.add_edge(nozzle)
+        self.four_res.connect_node_upstream_edge(0, 0)
+        self.four_res.detach_node_edge(0, 0)
+        self.assertEqual(self.four_res.get_nodes()[0].get_input_pipes(), [])
+        self.assertEqual(self.pipe0.output_node, None)
+        self.assertRaises(ValueError,
+                          lambda: self.four_res.detach_node_edge(0, 1))
 
 
 if __name__ == '__main__':

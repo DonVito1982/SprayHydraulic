@@ -12,6 +12,12 @@ class Edge(object):
         self._input_node = None
         self._output_node = None
 
+    def clear_input(self):
+        self._input_node = None
+
+    def clear_output(self):
+        self._output_node = None
+
     @property
     def name(self):
         return self._name
@@ -63,6 +69,7 @@ class Nozzle(Edge):
     def __init__(self):
         super(Nozzle, self).__init__()
         self.k_factor = None
+        self._required_pressure = None
 
     def set_factor(self, value, unit):
         if self.k_factor is not None:
@@ -72,6 +79,15 @@ class Nozzle(Edge):
 
     def get_factor(self, unit):
         return self.k_factor.values[unit]
+
+    def set_required_pressure(self, value, unit):
+        if self._required_pressure is not None:
+            self._required_pressure.set_single_value(value, unit)
+        else:
+            self._required_pressure = physics.Pressure(value, unit)
+
+    def get_required_pressure(self, unit):
+        return self._required_pressure.values[unit]
 
     def get_gpm_flow(self):
         in_ene = self.input_node.get_energy('psi')
@@ -121,6 +137,7 @@ class Pipe(Edge):
         self.length = None
         self.inner_diam = None
         self.c_coefficient = None
+        self.k_pipe = None
 
     def is_complete(self):
         """
@@ -149,11 +166,11 @@ class Pipe(Edge):
             self.length = physics.Length(value, unit)
 
     def get_length(self, unit):
-        # type: (str) -> float
         """
         Getter for the *length* attribute. Must be called
         after :func: `set_length`.
-        :param unit:
+        :param unit: the pipe length's unit
+        :type unit: str
         :return:
         """
         return self.length.values[unit]
@@ -173,7 +190,7 @@ class Pipe(Edge):
     def get_c_coefficient(self):
         return self.c_coefficient
 
-    def hazen_williams_loss(self, unit):
+    def get_hazen_williams_loss(self, unit):
         length_ft = self.get_length('ft')
         flow = self.get_vol_flow('gpm')
         diam_in = self.get_inner_diam('in')
@@ -194,12 +211,16 @@ class Pipe(Edge):
         self.set_vol_flow(q_flow, 'gpm')
         return q_flow
 
-    def k_flow(self):
+    def _set_k_pipe(self):
         pipe_length = self.get_length('ft')
         c = self.get_c_coefficient()
-        inner_diam = self.get_inner_diam('in')
-        factor = (4.52 * pipe_length) / (c ** Pipe.C_POWER * inner_diam ** 4.87)
-        return factor
+        diam = self.get_inner_diam('in')
+        self.k_pipe = (4.52 * pipe_length) / (c ** Pipe.C_POWER * diam ** 4.87)
+
+    def k_flow(self):
+        if not self.k_pipe:
+            self._set_k_pipe()
+        return self.k_pipe
 
     def get_node_jacobian(self, node):
         exponent = 1 / Pipe.C_POWER - 1
@@ -239,6 +260,7 @@ class Node(object):
         self.input_pipes = []
         self._name = None
         self.energy = None
+        self._out_flow = physics.VolFlow(0, 'gpm')
 
     def set_elevation(self, value, unit):
         if self.elevation:
@@ -284,6 +306,12 @@ class Node(object):
     def get_input_pipes(self):
         return self.input_pipes
 
+    def get_output_flow(self, unit):
+        return self._out_flow.values[unit]
+
+    def set_output_flow(self, value, unit):
+        self._out_flow.set_single_value(value, unit)
+
 
 class ConnectionNode(Node):
     """The nodes in a pipe network"""
@@ -306,7 +334,17 @@ class ConnectionNode(Node):
             self.set_pressure(self.get_energy('mH2O') -
                               self.get_elevation('m'), 'mH2O')
 
+    def remove_output(self, index):
+        self.output_pipes.pop(index)
+
+    def remove_input(self, index):
+        self.input_pipes.pop(index)
+
 
 class EndNode(Node):
     def get_pressure(self, unit):
         return 0
+
+
+class InputNode(ConnectionNode):
+    pass

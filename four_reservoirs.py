@@ -47,27 +47,27 @@ problem.connect_node_downstream_edge(5, 4)
 problem.connect_node_upstream_edge(2, 3)
 problem.connect_node_upstream_edge(3, 4)
 
+# OUTPUT FLOW AT NODE 4
+problem.get_nodes()[4].set_output_flow(200, 'gpm')
+
 problem.solve_system()
 
-end_flows = []
-
-for cont5 in range(pipe_count):
-    end_flows.append(problem.get_edges()[cont5].get_gpm_flow())
 
 # FLOW CHECK
 test_flows = [1135.2443, -383.5847, 751.6596, 394.3143, 357.3453]
-status = 'Ok'
 for cont in range(pipe_count):
-    cur_end = end_flows[cont]
     cur_pipe = problem.get_edges()[cont]
-    print "p%s) flow %.3f" % (cur_pipe.name, cur_pipe.get_gpm_flow())
-print "\nflow is %s" % status
+    print "p%s) flow %.3f gpm" % (cur_pipe.name, cur_pipe.get_gpm_flow())
 
 # PRESSURE CHECK
 test_press = [0, 0, 0, 0, 30.016, 7.383]
-status = 'Ok'
-for cont in range(node_count):
-    cur_press = problem.get_nodes()[cont].get_pressure('psi')
-    if abs(cur_press-test_press[cont]) > 1e-3:
-        status = 'not Ok'
-print "Pressure is %s" % status
+
+print
+for node in problem.get_nodes():
+    in_gpm = 0
+    for edge in node.get_input_pipes():
+        in_gpm += edge.get_vol_flow('gpm')
+    for edge in node.get_output_pipes():
+        in_gpm -= edge.get_vol_flow('gpm')
+    pressure = node.get_pressure('psi')
+    print "n%s)P= %6.3f psi, Q= %9.3f" % (node.name, pressure, in_gpm)

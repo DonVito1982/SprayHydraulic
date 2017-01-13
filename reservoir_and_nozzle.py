@@ -42,7 +42,7 @@ for index in range(5, 8):
     cur_pipe.name = index
     problem.add_edge(cur_pipe)
 
-# for element in problem.get_pipes():
+# for element in problem.get_edges():
 #     print '%s is %s' % (element.name, type(element))
 
 # SET CONNECTIVITY
@@ -64,7 +64,7 @@ problem.connect_node_downstream_edge(8, 7)
 problem.connect_node_upstream_edge(8, 4)
 
 # for index in range(8):
-#     cur_pipe = problem.get_pipes()[index]
+#     cur_pipe = problem.get_edges()[index]
 #     message = 'complete' if cur_pipe.is_complete() else 'not complete'
 #     print "Pipe #%s is %s" % (cur_pipe.name, message)
 

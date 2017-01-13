@@ -143,12 +143,12 @@ while f_module(f_results) > 0.00001:
 print flow_vector
 
 n4_energy = network_nodes[0].get_energy('psi') - \
-            network_pipes[0].hazen_williams_loss('psi')
+            network_pipes[0].get_hazen_williams_loss('psi')
 network_nodes[3].set_energy(n4_energy, 'psi')
 print
 print network_nodes[3].get_pressure('psi')
 
-n2_energy = n4_energy - network_pipes[1].hazen_williams_loss('psi')
+n2_energy = n4_energy - network_pipes[1].get_hazen_williams_loss('psi')
 network_nodes[1].set_energy(n2_energy, 'psi')
 print
 print network_nodes[1].get_pressure('psi')

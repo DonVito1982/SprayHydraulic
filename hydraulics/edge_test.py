@@ -80,7 +80,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_inner_diam(4.026, 'in')
         self.sys_pipe.set_vol_flow(200, 'gpm')
         self.sys_pipe.set_c_coefficient(100)
-        loss = self.sys_pipe.hazen_williams_loss('psi')
+        loss = self.sys_pipe.get_hazen_williams_loss('psi')
         self.assertAlmostEqual(loss, 1.5160886, 4)
 
     def test_negative_flow_loss(self):
@@ -88,7 +88,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_inner_diam(4.026, 'in')
         self.sys_pipe.set_vol_flow(-200, 'gpm')
         self.sys_pipe.set_c_coefficient(100)
-        loss = self.sys_pipe.hazen_williams_loss('psi')
+        loss = self.sys_pipe.get_hazen_williams_loss('psi')
         self.assertAlmostEqual(loss, -1.5160886, 4)
 
     def test_c_coefficient(self):
@@ -302,6 +302,10 @@ class NozzleTests(unittest.TestCase):
         self.nozzle0.output_node = out_node
         nozzle_flow = self.nozzle0.get_gpm_flow()
         self.assertAlmostEqual(nozzle_flow, 12)
+
+    def test_required_pressure(self):
+        self.nozzle0.set_required_pressure(30, 'psi')
+        self.assertEqual(self.nozzle0.get_required_pressure('psi'), 30)
 
 
 if __name__ == '__main__':
