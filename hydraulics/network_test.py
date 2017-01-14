@@ -143,6 +143,7 @@ class NetworkTests(unittest.TestCase):
         self.four_res.connect_node_downstream_pipe(1, 0)
         self.four_res.connect_node_upstream_pipe(2, 1)
         flow0 = self.pipe0.get_gpm_flow() - pipe1.get_gpm_flow()
+        # print len(self.four_res.f_equations())
         self.assertEqual(float(self.four_res.f_equations()), flow0)
 
 

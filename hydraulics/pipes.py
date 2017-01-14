@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABCMeta
 
 from hydraulics import physics
-from hydraulics.nodes import Node, EndNode, ConnectionNode
+from nodes import Node, EndNode, ConnectionNode
 
 C_POWER = 1.852
 
