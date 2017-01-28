@@ -1,8 +1,7 @@
 import unittest
 
-from pipes import Pipe
+from pipes import Pipe, ConnectionNode, EndNode, Nozzle
 from pipe_network import PNetwork
-from nodes import ConnectionNode, EndNode
 
 
 class NetworkTests(unittest.TestCase):
@@ -26,16 +25,16 @@ class NetworkTests(unittest.TestCase):
         self.assertTrue(node2 in self.four_res.get_nodes())
 
     def test_add_pipes(self):
-        self.four_res.add_pipe(self.pipe0)
-        self.assertTrue(self.pipe0 in self.four_res.get_pipes())
+        self.four_res.add_edge(self.pipe0)
+        self.assertTrue(self.pipe0 in self.four_res.get_edges())
         pipe2 = Pipe()
-        self.four_res.add_pipe(pipe2)
-        self.assertEqual(len(self.four_res.get_pipes()), 2)
+        self.four_res.add_edge(pipe2)
+        self.assertEqual(len(self.four_res.get_edges()), 2)
 
     def test_node_upstream_pipe(self):
         self.four_res.add_node(self.node0)
-        self.four_res.add_pipe(self.pipe0)
-        self.four_res.connect_node_upstream_pipe(0, 0)
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.connect_node_upstream_edge(0, 0)
         self.assertTrue(self.pipe0 in self.node0.get_input_pipes())
         self.assertEqual(self.pipe0.output_node, self.node0)
 
@@ -51,18 +50,20 @@ class NetworkTests(unittest.TestCase):
                          25)
         self.assertRaises(IndexError,
                           lambda: self.four_res.get_node_index_by_name('n3'))
+        self.assertEqual(self.four_res.get_node_index_by_name('n1'), 1)
 
     def test_search_pipe_by_name(self):
         self.pipe0.name = 'p0'
         pipe1 = Pipe()
         pipe1.name = 'p1'
-        self.four_res.add_pipe(self.pipe0)
-        self.four_res.add_pipe(pipe1)
-        index = self.four_res.get_pipe_index_by_name('p0')
-        self.assertEqual(self.four_res.get_pipes()[index].get_length('m'),
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.add_edge(pipe1)
+        index = self.four_res.get_edge_index_by_name('p0')
+        self.assertEqual(self.four_res.get_edges()[index].get_length('m'),
                          1000)
         self.assertRaises(IndexError,
-                          lambda: self.four_res.get_pipe_index_by_name('n3'))
+                          lambda: self.four_res.get_edge_index_by_name('n3'))
+        self.assertEqual(self.four_res.get_edge_index_by_name('p1'), 1)
 
     def test_network_node_name(self):
         self.four_res.add_node(self.node0)
@@ -75,21 +76,18 @@ class NetworkTests(unittest.TestCase):
         self.four_res.add_node(self.node0)
         node1 = ConnectionNode()
         self.four_res.add_node(node1)
-        fail = False
-        try:
-            self.four_res.set_node_name(1, 'n0')
-        except IndexError:
-            fail = True
-        self.assertTrue(fail)
+        self.assertRaises(IndexError,
+                          lambda: self.four_res.set_node_name(1, 'n0'))
 
     def test_node_downstream_pipe(self):
         self.four_res.add_node(self.node0)
-        self.four_res.add_pipe(self.pipe0)
-        self.four_res.connect_node_downstream_pipe(0, 0)
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.connect_node_downstream_edge(0, 0)
         self.assertTrue(self.pipe0 in self.node0.get_output_pipes())
         self.assertEqual(self.pipe0.input_node, self.node0)
 
     def test_set_active_nodes(self):
+        self.assertEqual(self.four_res.get_active_nodes(), [])
         node1 = EndNode()
         node2 = ConnectionNode()
         self.four_res.add_node(self.node0)
@@ -107,21 +105,17 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(self.four_res.get_active_nodes(), [0, 1])
 
     def test_pipe_name(self):
-        self.four_res.add_pipe(self.pipe0)
+        self.four_res.add_edge(self.pipe0)
         self.four_res.set_pipe_name(0, 'p1')
         self.assertEqual(self.pipe0.name, 'p1')
 
     def test_repeated_pipe_name(self):
         self.pipe0.name = 'p0'
-        self.four_res.add_pipe(self.pipe0)
+        self.four_res.add_edge(self.pipe0)
         pipe1 = Pipe()
-        self.four_res.add_pipe(pipe1)
-        fail = False
-        try:
-            self.four_res.set_pipe_name(1, 'p0')
-        except IndexError:
-            fail = True
-        self.assertTrue(fail)
+        self.four_res.add_edge(pipe1)
+        self.assertRaises(IndexError,
+                          lambda: self.four_res.set_pipe_name(1, 'p0'))
 
     def test_f_equations(self):
         self.node0.set_energy(25, 'mH2O')
@@ -129,7 +123,7 @@ class NetworkTests(unittest.TestCase):
         node1.set_elevation(27, 'm')
         node2 = EndNode()
         node2.set_elevation(23, 'm')
-        self.four_res.add_pipe(self.pipe0)
+        self.four_res.add_edge(self.pipe0)
         self.four_res.add_node(self.node0)
         self.four_res.add_node(node1)
         self.four_res.add_node(node2)
@@ -137,14 +131,61 @@ class NetworkTests(unittest.TestCase):
         pipe1.set_inner_diam(6, 'in')
         pipe1.set_c_coefficient(100)
         pipe1.set_length(800, 'm')
-        self.four_res.add_pipe(pipe1)
-        self.four_res.connect_node_upstream_pipe(0, 0)
-        self.four_res.connect_node_downstream_pipe(0, 1)
-        self.four_res.connect_node_downstream_pipe(1, 0)
-        self.four_res.connect_node_upstream_pipe(2, 1)
+        self.four_res.add_edge(pipe1)
+        self.four_res.connect_node_upstream_edge(0, 0)
+        self.four_res.connect_node_downstream_edge(0, 1)
+        self.four_res.connect_node_downstream_edge(1, 0)
+        self.four_res.connect_node_upstream_edge(2, 1)
         flow0 = self.pipe0.get_gpm_flow() - pipe1.get_gpm_flow()
         # print len(self.four_res.f_equations())
         self.assertEqual(float(self.four_res.f_equations()), flow0)
+
+    def test_delete_nozzle(self):
+        nozzle1 = Nozzle()
+        nozzle2 = Nozzle()
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.add_edge(nozzle1)
+        self.four_res.add_edge(nozzle2)
+        for index in range(3):
+            self.four_res.set_pipe_name(index, index)
+        self.four_res.add_node(self.node0)
+        self.four_res.connect_node_upstream_edge(0, 0)
+        self.four_res.connect_node_downstream_edge(0, 1)
+        self.four_res.hold_nozzle(1)
+        self.assertEqual(len(self.four_res.get_edges()), 2)
+        self.assertEqual(self.four_res.detached_nozzle_index, 1)
+        self.assertEqual(self.four_res.deleted_edge.name, '1')
+        self.assertEqual(self.four_res.get_nodes()[0].get_output_pipes(), [])
+        self.four_res.reinsert_nozzle()
+        self.assertEqual(len(self.four_res.get_edges()), 3)
+        self.assertEqual(self.four_res.get_edges()[1].name, '1')
+        self.assertEqual(self.four_res.deleted_edge, None)
+        output_name = self.four_res.get_nodes()[0].get_output_pipes()[0].name
+        self.assertEqual(output_name, '1')
+
+    def test_detach_node_and_downstream(self):
+        nozzle = Nozzle()
+        self.four_res.add_node(self.node0)
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.add_edge(nozzle)
+        self.four_res.connect_node_downstream_edge(0, 0)
+        self.four_res.detach_node_edge(0, 0)
+        self.assertEqual(self.four_res.get_nodes()[0].get_output_pipes(), [])
+        self.assertEqual(self.pipe0.input_node, None)
+        self.assertRaises(ValueError,
+                          lambda: self.four_res.detach_node_edge(0, 1))
+
+    def test_detach_node_and_upstream(self):
+        nozzle = Nozzle()
+        self.four_res.add_node(self.node0)
+        self.four_res.add_edge(self.pipe0)
+        self.four_res.add_edge(nozzle)
+        self.four_res.connect_node_upstream_edge(0, 0)
+        self.four_res.detach_node_edge(0, 0)
+        self.assertEqual(self.four_res.get_nodes()[0].get_input_pipes(), [])
+        self.assertEqual(self.pipe0.output_node, None)
+        self.assertRaises(ValueError,
+                          lambda: self.four_res.detach_node_edge(0, 1))
 
 
 if __name__ == '__main__':

@@ -148,7 +148,7 @@ def set_q(pipe, is_printed=False):
         print pipe.k_flow()
         print
     energy_ratio = (up_energy - down_energy) / pipe.k_flow()
-    flow = energy_ratio * abs(energy_ratio) ** (1 / pipes.C_POWER - 1)
+    flow = energy_ratio * abs(energy_ratio) ** (1 / pipes.Pipe.C_POWER - 1)
     pipe.set_vol_flow(flow, 'gpm')
 
 

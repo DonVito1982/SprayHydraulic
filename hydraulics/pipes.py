@@ -1,9 +1,6 @@
 from abc import abstractmethod, ABCMeta
 
-from hydraulics import physics
-from nodes import Node, EndNode, ConnectionNode
-
-C_POWER = 1.852
+import physics
 
 
 class Edge(object):
@@ -13,6 +10,12 @@ class Edge(object):
         self.vol_flow = None
         self._name = None
         self._input_node = None
+        self._output_node = None
+
+    def clear_input(self):
+        self._input_node = None
+
+    def clear_output(self):
         self._output_node = None
 
     @property
@@ -49,14 +52,27 @@ class Edge(object):
     def get_node_jacobian(self, node):
         pass
 
+    @property
+    def input_node(self):
+        return self._input_node
+
+    @input_node.setter
+    def input_node(self, node):
+        if self._input_node:
+            raise IndexError
+        if not isinstance(node, Node):
+            raise ValueError
+        self._input_node = node
+
 
 class Nozzle(Edge):
     def __init__(self):
         super(Nozzle, self).__init__()
         self.k_factor = None
+        self._required_pressure = None
 
     def set_factor(self, value, unit):
-        if self.k_factor:
+        if self.k_factor is not None:
             self.k_factor.set_single_value(value, unit)
         else:
             self.k_factor = physics.NozzleK(value, unit)
@@ -64,13 +80,31 @@ class Nozzle(Edge):
     def get_factor(self, unit):
         return self.k_factor.values[unit]
 
+    def set_required_pressure(self, value, unit):
+        if self._required_pressure is not None:
+            self._required_pressure.set_single_value(value, unit)
+        else:
+            self._required_pressure = physics.Pressure(value, unit)
+
+    def get_required_pressure(self, unit):
+        return self._required_pressure.values[unit]
+
     def get_gpm_flow(self):
-        return 0
+        in_ene = self.input_node.get_energy('psi')
+        out_ene = self.output_node.get_energy('psi')
+        if in_ene - out_ene == 0:
+            q_flow = 0
+        else:
+            energy_diff = (in_ene - out_ene)
+            k_fac = self.get_factor('gpm/psi^0.5')
+            q_flow = energy_diff * k_fac * (abs(energy_diff) ** (-0.5))
+        self.set_vol_flow(q_flow, 'gpm')
+        return q_flow
 
     def get_node_jacobian(self, node):
         result = 0
         if self.input_node == node:
-            k_factor = self.k_factor
+            k_factor = self.get_factor('gpm/psi^0.5')
             diff = node.get_energy('psi') - self.output_node.get_energy('psi')
             result += (k_factor / 2.0) * abs(k_factor * diff) ** (-0.5)
         return result
@@ -89,16 +123,6 @@ class Nozzle(Edge):
         else:
             raise ValueError
 
-    @property
-    def input_node(self):
-        return self._input_node
-
-    @input_node.setter
-    def input_node(self, node):
-        if self._input_node:
-            raise IndexError
-        self._input_node = node
-
 
 class Pipe(Edge):
     """A cylindrical pipe through which water flows
@@ -106,11 +130,14 @@ class Pipe(Edge):
     It doesn't need any parameters for initializing, instead it's given
     attributes through the following methods
     """
+    C_POWER = 1.852
+
     def __init__(self):
         super(Pipe, self).__init__()
         self.length = None
         self.inner_diam = None
         self.c_coefficient = None
+        self.k_pipe = None
 
     def is_complete(self):
         """
@@ -139,11 +166,11 @@ class Pipe(Edge):
             self.length = physics.Length(value, unit)
 
     def get_length(self, unit):
-        # type: (str) -> float
         """
         Getter for the *length* attribute. Must be called
         after :func: `set_length`.
-        :param unit:
+        :param unit: the pipe length's unit
+        :type unit: str
         :return:
         """
         return self.length.values[unit]
@@ -163,13 +190,13 @@ class Pipe(Edge):
     def get_c_coefficient(self):
         return self.c_coefficient
 
-    def hazen_williams_loss(self, unit):
+    def get_hazen_williams_loss(self, unit):
         length_ft = self.get_length('ft')
         flow = self.get_vol_flow('gpm')
         diam_in = self.get_inner_diam('in')
         c_coefficient = self.c_coefficient
-        numerator = length_ft * 4.52 * flow * abs(flow) ** (C_POWER - 1)
-        delta_press = numerator / (c_coefficient ** C_POWER * diam_in ** 4.87)
+        num = length_ft * 4.52 * flow * abs(flow) ** (Pipe.C_POWER - 1)
+        delta_press = num / (c_coefficient ** Pipe.C_POWER * diam_in ** 4.87)
         pressure_loss = physics.Pressure(delta_press, 'psi')
         return pressure_loss.values[unit]
 
@@ -180,29 +207,33 @@ class Pipe(Edge):
             q_flow = 0
         else:
             energy_ratio = (in_ene - out_ene) / self.k_flow()
-            q_flow = energy_ratio * abs(energy_ratio) ** (1 / C_POWER - 1)
+            q_flow = energy_ratio * abs(energy_ratio) ** (1 / Pipe.C_POWER - 1)
         self.set_vol_flow(q_flow, 'gpm')
         return q_flow
 
-    def k_flow(self):
+    def _set_k_pipe(self):
         pipe_length = self.get_length('ft')
         c = self.get_c_coefficient()
-        inner_diam = self.get_inner_diam('in')
-        factor = (4.52 * pipe_length) / (c ** C_POWER * inner_diam ** 4.87)
-        return factor
+        diam = self.get_inner_diam('in')
+        self.k_pipe = (4.52 * pipe_length) / (c ** Pipe.C_POWER * diam ** 4.87)
+
+    def k_flow(self):
+        if not self.k_pipe:
+            self._set_k_pipe()
+        return self.k_pipe
 
     def get_node_jacobian(self, node):
-        exponent = 1 / C_POWER - 1
+        exponent = 1 / Pipe.C_POWER - 1
         k_fac = self.k_flow()
         current_energy = node.get_energy('psi')
         result = 0
         if self.output_node == node:
             input_energy = self.input_node.get_energy('psi')
-            result -= (1 / (C_POWER * k_fac)) * abs(
+            result -= (1 / (Pipe.C_POWER * k_fac)) * abs(
                 (input_energy - current_energy) / k_fac) ** exponent
         if self.input_node == node:
             output_energy = self.output_node.get_energy('psi')
-            result += (1 / (C_POWER * k_fac)) * abs(
+            result += (1 / (Pipe.C_POWER * k_fac)) * abs(
                 (current_energy - output_energy) / k_fac) ** exponent
         return result
 
@@ -215,15 +246,105 @@ class Pipe(Edge):
         if self._output_node:
             raise IndexError
         if not isinstance(node, Node):
-            raise ValueError
+            raise ValueError('Must be node')
         self._output_node = node
 
-    @property
-    def input_node(self):
-        return self._input_node
 
-    @input_node.setter
-    def input_node(self, node):
-        if self._input_node:
-            raise IndexError
-        self._input_node = node
+class Node(object):
+    __metaclass__ = ABCMeta
+
+    def __init__(self):
+        self._pressure = None
+        self.elevation = None
+        self.output_pipes = []
+        self.input_pipes = []
+        self._name = None
+        self.energy = None
+        self._out_flow = physics.VolFlow(0, 'gpm')
+
+    def set_elevation(self, value, unit):
+        if self.elevation:
+            self.elevation.set_single_value(value, unit)
+        else:
+            self.elevation = physics.Length(value, unit)
+        self.energy = None
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, name):
+        name = str(name)
+        self._name = name
+
+    def get_elevation(self, unit):
+        return self.elevation.values[unit]
+
+    @abstractmethod
+    def get_pressure(self, unit):
+        pass
+
+    def get_energy(self, unit):
+        if self.energy:
+            return self.energy.values[unit]
+        else:
+            elevation_m = self.get_elevation('m')
+            press_meters = self.get_pressure('mH2O')
+            self.energy = physics.Pressure(elevation_m + press_meters, 'mH2O')
+            return self.energy.values[unit]
+
+    def set_output_pipe(self, pipe):
+        self.output_pipes.append(pipe)
+
+    def get_output_pipes(self):
+        return self.output_pipes
+
+    def set_input_pipe(self, pipe):
+        self.input_pipes.append(pipe)
+
+    def get_input_pipes(self):
+        return self.input_pipes
+
+    def get_output_flow(self, unit):
+        return self._out_flow.values[unit]
+
+    def set_output_flow(self, value, unit):
+        self._out_flow.set_single_value(value, unit)
+
+
+class ConnectionNode(Node):
+    """The nodes in a pipe network"""
+    def set_pressure(self, value, unit):
+        if self._pressure:
+            self._pressure.set_single_value(value, unit)
+        else:
+            self._pressure = physics.Pressure(value, unit)
+        self.energy = None
+
+    def get_pressure(self, unit):
+        return self._pressure.values[unit]
+
+    def set_energy(self, value, unit):
+        if self.energy:
+            self.energy.set_single_value(value, unit)
+        else:
+            self.energy = physics.Pressure(value, unit)
+        if self.elevation:
+            self.set_pressure(self.get_energy('mH2O') -
+                              self.get_elevation('m'), 'mH2O')
+
+    def remove_output(self, index):
+        self.output_pipes.pop(index)
+
+    def remove_input(self, index):
+        self.input_pipes.pop(index)
+
+
+class EndNode(Node):
+    def get_pressure(self, unit):
+        return 0
+
+
+class InputNode(ConnectionNode):
+    pass

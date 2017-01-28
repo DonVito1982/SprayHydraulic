@@ -1,6 +1,5 @@
-from hydraulics.nodes import EndNode, ConnectionNode
 from hydraulics.pipe_network import PNetwork
-from hydraulics.pipes import Pipe
+from hydraulics.pipes import Pipe, EndNode, ConnectionNode
 
 elevations = [100, 85, 65, 65, 70, 70]
 names = [0, 1, 2, 3, 4, 5]
@@ -34,40 +33,41 @@ for pipe_index in range(pipe_count):
     cur_pipe.set_inner_diam(inner_diameters[pipe_index], 'in')
     cur_pipe.set_c_coefficient(100)
     cur_pipe.name = pipe_index
-    problem.add_pipe(cur_pipe)
-
+    problem.add_edge(cur_pipe)
 
 # SET CONNECTIVITY
-problem.connect_node_downstream_pipe(4, 2)
-problem.connect_node_upstream_pipe(4, 1)
-problem.connect_node_upstream_pipe(4, 0)
-problem.connect_node_downstream_pipe(0, 0)
-problem.connect_node_downstream_pipe(1, 1)
-problem.connect_node_upstream_pipe(5, 2)
-problem.connect_node_downstream_pipe(5, 3)
-problem.connect_node_downstream_pipe(5, 4)
-problem.connect_node_upstream_pipe(2, 3)
-problem.connect_node_upstream_pipe(3, 4)
+problem.connect_node_downstream_edge(4, 2)
+problem.connect_node_upstream_edge(4, 1)
+problem.connect_node_upstream_edge(4, 0)
+problem.connect_node_downstream_edge(0, 0)
+problem.connect_node_downstream_edge(1, 1)
+problem.connect_node_upstream_edge(5, 2)
+problem.connect_node_downstream_edge(5, 3)
+problem.connect_node_downstream_edge(5, 4)
+problem.connect_node_upstream_edge(2, 3)
+problem.connect_node_upstream_edge(3, 4)
 
-# SET INITIAL HEAD GUESS
+# OUTPUT FLOW AT NODE 4
+problem.get_nodes()[4].set_output_flow(200, 'gpm')
 
-print problem.get_pipes()[0].get_gpm_flow()
-print "That was pipe #0"
-print
+problem.solve_system()
 
-problem.solve_shit()
 
-end_flows = []
-
-for cont5 in range(pipe_count):
-    end_flows.append(problem.get_pipes()[cont5].get_gpm_flow())
-
-print
-print "Pipe   Flow (gpm)"
+# FLOW CHECK
+test_flows = [1135.2443, -383.5847, 751.6596, 394.3143, 357.3453]
 for cont in range(pipe_count):
-    print " %s      %9.4f" % (problem.get_pipes()[cont].name, end_flows[cont])
+    cur_pipe = problem.get_edges()[cont]
+    print "p%s) flow %.3f gpm" % (cur_pipe.name, cur_pipe.get_gpm_flow())
+
+# PRESSURE CHECK
+test_press = [0, 0, 0, 0, 30.016, 7.383]
+
 print
-print "Node  Pressures"
-for cont in range(node_count):
-    print " %s    %6.3f psi" % (problem.get_nodes()[cont].name,
-                                problem.get_nodes()[cont].get_pressure('psi'))
+for node in problem.get_nodes():
+    in_gpm = 0
+    for edge in node.get_input_pipes():
+        in_gpm += edge.get_vol_flow('gpm')
+    for edge in node.get_output_pipes():
+        in_gpm -= edge.get_vol_flow('gpm')
+    pressure = node.get_pressure('psi')
+    print "n%s)P= %6.3f psi, Q= %9.3f" % (node.name, pressure, in_gpm)
