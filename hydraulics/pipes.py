@@ -1,6 +1,8 @@
 from abc import abstractmethod, ABCMeta
 
+
 import physics
+from nodes import Node, EndNode
 
 
 class Edge(object):
@@ -110,7 +112,8 @@ class Nozzle(Edge):
         return result
 
     def is_complete(self):
-        return bool(self.k_factor and self.input_node and self.output_node)
+        return bool(self.k_factor and self.input_node and self.output_node and
+                    self._required_pressure)
 
     @property
     def output_node(self):
@@ -249,7 +252,7 @@ class Pipe(Edge):
             raise ValueError('Must be node')
         self._output_node = node
 
-
+"""
 class Node(object):
     __metaclass__ = ABCMeta
 
@@ -314,7 +317,6 @@ class Node(object):
 
 
 class ConnectionNode(Node):
-    """The nodes in a pipe network"""
     def set_pressure(self, value, unit):
         if self._pressure:
             self._pressure.set_single_value(value, unit)
@@ -348,3 +350,4 @@ class EndNode(Node):
 
 class InputNode(ConnectionNode):
     pass
+"""

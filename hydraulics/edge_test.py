@@ -1,6 +1,7 @@
 import unittest
 
-from pipes import Pipe, ConnectionNode, Nozzle, Edge, EndNode
+from pipes import Pipe, Nozzle, Edge
+from nodes import ConnectionNode, EndNode
 
 
 class PipeTest(unittest.TestCase):
@@ -229,6 +230,8 @@ class PipeTest(unittest.TestCase):
 class NozzleTests(unittest.TestCase):
     def setUp(self):
         self.nozzle0 = Nozzle()
+        self.in_node = ConnectionNode()
+        self.out_node = EndNode()
 
     def test_creation(self):
         self.assertTrue(isinstance(self.nozzle0, Nozzle))
@@ -239,10 +242,9 @@ class NozzleTests(unittest.TestCase):
         self.assertEqual(self.nozzle0.name, '3')
 
     def test_input_node(self):
-        input_node = ConnectionNode()
         other_node = ConnectionNode()
-        self.nozzle0.input_node = input_node
-        self.assertEqual(self.nozzle0.input_node, input_node)
+        self.nozzle0.input_node = self.in_node
+        self.assertEqual(self.nozzle0.input_node, self.in_node)
         fail = False
         try:
             self.nozzle0.input_node = other_node
@@ -260,23 +262,20 @@ class NozzleTests(unittest.TestCase):
         self.assertTrue(fail)
 
     def test_output(self):
-        output_node = EndNode()
-        self.nozzle0.output_node = output_node
-        self.assertEqual(self.nozzle0.output_node, output_node)
+        self.nozzle0.output_node = self.out_node
+        self.assertEqual(self.nozzle0.output_node, self.out_node)
 
     def test_end_output(self):
-        output_node = ConnectionNode()
         fail = False
         try:
-            self.nozzle0.output_node = output_node
+            self.nozzle0.output_node = self.in_node
         except ValueError:
             fail = True
         self.assertTrue(fail)
 
     def test_repeated_output(self):
-        output_node = EndNode()
         other_node = EndNode()
-        self.nozzle0.output_node = output_node
+        self.nozzle0.output_node = self.out_node
         fail = False
         try:
             self.nozzle0.output_node = other_node
@@ -293,19 +292,32 @@ class NozzleTests(unittest.TestCase):
 
     def test_gpm_flow(self):
         self.nozzle0.set_factor(2, 'gpm/psi^0.5')
-        in_node = ConnectionNode()
-        in_node.set_elevation(5, 'm')
-        in_node.set_pressure(36, 'psi')
-        out_node = EndNode()
-        out_node.set_elevation(5, 'm')
-        self.nozzle0.input_node = in_node
-        self.nozzle0.output_node = out_node
+        self.in_node.set_elevation(5, 'm')
+        self.in_node.set_pressure(36, 'psi')
+        self.out_node.set_elevation(5, 'm')
+        self.nozzle0.input_node = self.in_node
+        self.nozzle0.output_node = self.out_node
         nozzle_flow = self.nozzle0.get_gpm_flow()
         self.assertAlmostEqual(nozzle_flow, 12)
 
     def test_required_pressure(self):
         self.nozzle0.set_required_pressure(30, 'psi')
         self.assertEqual(self.nozzle0.get_required_pressure('psi'), 30)
+
+    def test_complete_nozzle(self):
+        self.nozzle0.input_node = self.in_node
+        self.nozzle0.output_node = self.out_node
+        self.nozzle0.set_required_pressure(30, 'psi')
+        self.nozzle0.set_factor(1.2, 'gpm/psi^0.5')
+        self.assertTrue(self.nozzle0.is_complete())
+
+    def test_k_complete(self):
+        in_node = ConnectionNode()
+        out_node = EndNode()
+        self.nozzle0.input_node = in_node
+        self.nozzle0.output_node = out_node
+        self.nozzle0.set_required_pressure(30, 'psi')
+        self.assertFalse(self.nozzle0.is_complete())
 
 
 if __name__ == '__main__':

@@ -1,4 +1,5 @@
-from pipes import ConnectionNode
+from pipes import Nozzle
+from nodes import ConnectionNode
 import numpy as np
 import random
 
@@ -15,12 +16,14 @@ class PNetwork(object):
         self.unplugged_node_index = None
 
     def add_node(self, node):
+        assert node not in self.net_nodes
         self.net_nodes.append(node)
 
     def get_nodes(self):
         return self.net_nodes
 
     def add_edge(self, edge):
+        assert edge not in self.net_edges
         self.net_edges.append(edge)
 
     def get_edges(self):
@@ -28,7 +31,7 @@ class PNetwork(object):
 
     def get_node_index_by_name(self, name):
         cont = 0
-        for node in self.get_nodes():
+        for node in self.net_nodes:
             if node.name == name:
                 return cont
             cont += 1
@@ -43,13 +46,13 @@ class PNetwork(object):
         raise IndexError
 
     def connect_node_upstream_edge(self, node_index, edge_index):
-        node = self.get_nodes()[node_index]
+        node = self.net_nodes[node_index]
         edge = self.get_edges()[edge_index]
         node.set_input_pipe(edge)
         edge.output_node = node
 
     def connect_node_downstream_edge(self, node_index, edge_index):
-        node = self.get_nodes()[node_index]
+        node = self.net_nodes[node_index]
         edge = self.get_edges()[edge_index]
         node.set_output_pipe(edge)
         edge.input_node = node
@@ -57,7 +60,7 @@ class PNetwork(object):
     def _set_active_nodes_indexes(self):
         self._active_node_indexes = []
         node_count = 0
-        for node in self.get_nodes():
+        for node in self.net_nodes:
             if isinstance(node, ConnectionNode):
                 self._active_node_indexes.append(node_count)
             node_count += 1
@@ -104,9 +107,9 @@ class PNetwork(object):
     def _cell_jacob(self, row_index, col_index):
         partial_jac = 0
         evaluated_node = self.get_nodes()[col_index]
-        for connected_pipe in self.get_nodes()[row_index].get_input_pipes():
+        for connected_pipe in self.net_nodes[row_index].get_input_pipes():
             partial_jac += connected_pipe.get_node_jacobian(evaluated_node)
-        for connected_pipe in self.get_nodes()[row_index].get_output_pipes():
+        for connected_pipe in self.net_nodes[row_index].get_output_pipes():
             partial_jac -= connected_pipe.get_node_jacobian(evaluated_node)
         return partial_jac
 
@@ -118,7 +121,7 @@ class PNetwork(object):
         guess = np.zeros([self.get_problem_size(), 1])
         for cont in range(self.get_problem_size()):
             guess[cont][0] = random.uniform(min_energy, max_energy)
-            cur_node = self.get_nodes()[self._active_node_indexes[cont]]
+            cur_node = self.net_nodes[self._active_node_indexes[cont]]
             cur_node.set_energy(guess[cont][0], 'psi')
         return guess
 
@@ -200,16 +203,30 @@ class PNetwork(object):
             raise ValueError
 
     def hold_nozzle(self, noz_index):
+        assert isinstance(self.get_edges()[noz_index], Nozzle)
         input_node_name = self.get_edges()[noz_index].input_node.name
-        node_index = self.get_node_index_by_name(input_node_name)
-        self.unplugged_node_index = node_index
-        self.detach_node_edge(node_index, noz_index)
+        input_node_index = self.get_node_index_by_name(input_node_name)
+        self._set_nozzle_output_flow(noz_index, input_node_index)
+        self.unplugged_node_index = input_node_index
+        # print "Index: %d" % input_node_index
+        self.detach_node_edge(input_node_index, noz_index)
         self.detached_nozzle_index = noz_index
         self.deleted_edge = self.net_edges.pop(noz_index)
 
+    def _set_nozzle_output_flow(self, noz_index, node_index):
+        detached_nozzle = self.get_edges()[noz_index]
+        k_factor = detached_nozzle.get_factor('gpm/psi^0.5')
+        pressure = detached_nozzle.get_required_pressure('psi')
+        out_flow = k_factor * (pressure ** 0.5)
+        self.get_nodes()[node_index].set_output_flow(out_flow, 'gpm')
+
     def reinsert_nozzle(self):
         self.net_edges.insert(self.detached_nozzle_index, self.deleted_edge)
+        self.net_nodes[self.unplugged_node_index].set_output_flow(0, 'gpm')
         self.connect_node_downstream_edge(self.unplugged_node_index,
                                           self.detached_nozzle_index)
         self.deleted_edge = None
         self.detached_nozzle_index = None
+
+    def solve_remote_nozzle(self):
+        self.net_edges[0].set_vol_flow(10, 'gpm')

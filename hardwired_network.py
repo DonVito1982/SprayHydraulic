@@ -72,8 +72,8 @@ def k_factor(pipe):
     c = pipe.get_c_coefficient()
     diam = pipe.get_inner_diam('in')
 
-    factor = (4.52 * length * abs(flow) ** (pipes.C_POWER - 1)) / \
-             (c ** pipes.C_POWER * diam ** 4.87)
+    factor = (4.52 * length * abs(flow) ** (pipes.Pipe.C_POWER - 1)) / \
+             (c ** pipes.Pipe.C_POWER * diam ** 4.87)
     return factor
 
 
@@ -82,8 +82,8 @@ def flow_jacob(pipe):
     flow = pipe.get_vol_flow('gpm')
     c = pipe.get_c_coefficient()
     diam = pipe.get_inner_diam('in')
-    factor = (4.52 * pipes.C_POWER * abs(flow) ** (pipes.C_POWER - 1) * length)
-    factor /= (c ** pipes.C_POWER * diam ** 4.87)
+    factor = (4.52 * pipes.Pipe.C_POWER * abs(flow) ** (pipes.Pipe.C_POWER - 1) * length)
+    factor /= (c ** pipes.Pipe.C_POWER * diam ** 4.87)
     return factor
 
 

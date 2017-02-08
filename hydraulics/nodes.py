@@ -13,6 +13,7 @@ class Node(object):
         self.input_pipes = []
         self._name = None
         self.energy = None
+        self._out_flow = physics.VolFlow(0, 'gpm')
 
     def set_elevation(self, value, unit):
         if self.elevation:
@@ -58,6 +59,12 @@ class Node(object):
     def get_input_pipes(self):
         return self.input_pipes
 
+    def get_output_flow(self, unit):
+        return self._out_flow.values[unit]
+
+    def set_output_flow(self, value, unit):
+        self._out_flow.set_single_value(value, unit)
+
 
 class ConnectionNode(Node):
     """The nodes in a pipe network"""
@@ -80,7 +87,16 @@ class ConnectionNode(Node):
             self.set_pressure(self.get_energy('mH2O') -
                               self.get_elevation('m'), 'mH2O')
 
+    def remove_output(self, index):
+        self.output_pipes.pop(index)
+
+    def remove_input(self, index):
+        self.input_pipes.pop(index)
+
 
 class EndNode(Node):
     def get_pressure(self, unit):
         return 0
+
+class InputNode(ConnectionNode):
+    pass
