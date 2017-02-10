@@ -1,5 +1,5 @@
 from hydraulics.pipe_network import PNetwork
-from hydraulics.pipes import EndNode, ConnectionNode, Pipe, Nozzle
+from hydraulics.edges import EndNode, ConnectionNode, Pipe, Nozzle
 
 
 problem = PNetwork()

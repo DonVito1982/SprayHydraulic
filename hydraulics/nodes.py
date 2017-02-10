@@ -98,5 +98,6 @@ class EndNode(Node):
     def get_pressure(self, unit):
         return 0
 
+
 class InputNode(ConnectionNode):
     pass

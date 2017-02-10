@@ -1,6 +1,6 @@
 import unittest
 
-from pipes import Pipe
+from edges import Pipe
 from nodes import ConnectionNode, EndNode, InputNode
 
 

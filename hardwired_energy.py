@@ -1,6 +1,6 @@
 import numpy as np
 
-from hydraulics import pipes, nodes
+from hydraulics import edges, nodes
 
 network_nodes = []
 
@@ -31,7 +31,7 @@ inner_diameters = [10.75, 7.981, 7.981, 6.065, 6.065]
 network_pipes = []
 pipe_count = len(lengths)
 for pipe_index in range(pipe_count):
-    cur_pipe = pipes.Pipe()
+    cur_pipe = edges.Pipe()
     cur_pipe.set_length(lengths[pipe_index], 'm')
     cur_pipe.set_inner_diam(inner_diameters[pipe_index], 'in')
     cur_pipe.set_c_coefficient(100)
@@ -148,7 +148,7 @@ def set_q(pipe, is_printed=False):
         print pipe.k_flow()
         print
     energy_ratio = (up_energy - down_energy) / pipe.k_flow()
-    flow = energy_ratio * abs(energy_ratio) ** (1 / pipes.Pipe.C_POWER - 1)
+    flow = energy_ratio * abs(energy_ratio) ** (1 / edges.Pipe.C_POWER - 1)
     pipe.set_vol_flow(flow, 'gpm')
 
 

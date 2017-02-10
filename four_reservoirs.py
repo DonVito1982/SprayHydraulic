@@ -1,5 +1,6 @@
 from hydraulics.pipe_network import PNetwork
-from hydraulics.pipes import Pipe, EndNode, ConnectionNode
+from hydraulics.edges import Pipe, EndNode
+from hydraulics.nodes import ConnectionNode
 
 elevations = [100, 85, 65, 65, 70, 70]
 names = [0, 1, 2, 3, 4, 5]

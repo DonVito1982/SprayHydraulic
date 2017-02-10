@@ -1,6 +1,6 @@
 import unittest
 
-from pipes import Pipe, Nozzle, Edge
+from edges import Pipe, Nozzle, Edge
 from nodes import ConnectionNode, EndNode
 
 
