@@ -1,5 +1,6 @@
 from edges import Nozzle
-from nodes import ConnectionNode
+from nodes import ConnectionNode, InputNode
+from math import sqrt
 import numpy as np
 import random
 
@@ -17,6 +18,10 @@ class PNetwork(object):
 
     def add_node(self, node):
         assert node not in self._net_nodes
+        if isinstance(node, InputNode):
+            for each_node in self._net_nodes:
+                if isinstance(each_node, InputNode):
+                    raise AttributeError
         self._net_nodes.append(node)
 
     def get_nodes(self):
@@ -85,6 +90,13 @@ class PNetwork(object):
                 raise IndexError
         self._net_edges[index].name = name
 
+    def solve_system(self):
+        self.size = self.get_problem_size()
+        self.jacobian = np.zeros([self.size, self.size])
+        self._set_active_nodes_indexes()
+        initial_guess = self.first_guess()
+        self._iterate(initial_guess)
+
     def f_equations(self):
         size = self.get_problem_size()
         resp = np.zeros([size, 1])
@@ -132,13 +144,6 @@ class PNetwork(object):
                 col_index = self._active_node_indexes[cont2]
                 self.jacobian[cont1][cont2] = self._cell_jacob(row_index,
                                                                col_index)
-
-    def solve_system(self):
-        self.size = self.get_problem_size()
-        self.jacobian = np.zeros([self.size, self.size])
-        self._set_active_nodes_indexes()
-        initial_guess = self.first_guess()
-        self._iterate(initial_guess)
 
     def _iterate(self, energy_vector):
         iteration = 0
@@ -205,18 +210,20 @@ class PNetwork(object):
     def hold_nozzle(self, noz_index):
         assert isinstance(self.get_edges()[noz_index], Nozzle)
         input_node_name = self.get_edges()[noz_index].input_node.name
-        input_node_index = self.get_node_index_by_name(input_node_name)
-        self._set_nozzle_output_flow(noz_index, input_node_index)
-        self.unplugged_node_index = input_node_index
-        self.detach_node_edge(input_node_index, noz_index)
+        input_index = self.get_node_index_by_name(input_node_name)
+        self._set_nozzle_output_flow(noz_index, input_index)
+        self.unplugged_node_index = input_index
+        self.detach_node_edge(input_index, noz_index)
         self.detached_nozzle_index = noz_index
         self._deleted_edge = self._net_edges.pop(noz_index)
+        req_pressure = self._deleted_edge.get_required_pressure('psi')
+        self.get_nodes()[input_index].set_pressure(req_pressure, 'psi')
 
     def _set_nozzle_output_flow(self, noz_index, node_index):
         detached_nozzle = self.get_edges()[noz_index]
         k_factor = detached_nozzle.get_factor('gpm/psi^0.5')
         pressure = detached_nozzle.get_required_pressure('psi')
-        out_flow = k_factor * (pressure ** 0.5)
+        out_flow = k_factor * sqrt(pressure)
         self.get_nodes()[node_index].set_output_flow(out_flow, 'gpm')
 
     def reinsert_nozzle(self):
@@ -227,7 +234,7 @@ class PNetwork(object):
         self._deleted_edge = None
         self.detached_nozzle_index = None
 
-    def _done(self):
+    def _all_nozzles_solved(self):
         for this_nozzle_done in self._nozzle_indexes:
             if not this_nozzle_done[1]:
                 return False
@@ -238,7 +245,7 @@ class PNetwork(object):
         self.remote_nozzle_initialize()
         self._initialize_solved_nozzles()
         cont = 0
-        while not self._done():
+        while not self._all_nozzles_solved():
             pair = self._nozzle_indexes[cont]
             if not pair[1]:
                 self._solve_for_this_nozzle(pair[0])
@@ -247,7 +254,13 @@ class PNetwork(object):
             cont += 1
         for pair in self._nozzle_indexes:
             output_gpm_flow -= self._net_edges[pair[0]].get_gpm_flow()
-        self._net_nodes[0].set_output_flow(output_gpm_flow, 'gpm')
+        input_index = self._search_input_index()
+        self._net_nodes[input_index].set_output_flow(output_gpm_flow, 'gpm')
+
+    def _search_input_index(self):
+        for cont in range(len(self._net_nodes)):
+            if isinstance(self._net_nodes[cont], InputNode):
+                return cont
 
     def _initialize_solved_nozzles(self):
         self._nozzle_indexes = []

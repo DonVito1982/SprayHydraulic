@@ -163,7 +163,13 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_c_coefficient(100)
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10.75, 'in')
-        self.assertAlmostEqual(self.sys_pipe.k_flow(), 2.7807647e-6, 5)
+        self.assertAlmostEqual(self.sys_pipe.k_flow()/2.7807647e-6, 1)
+        self.sys_pipe.set_length(200, 'm')
+        self.assertClose(self.sys_pipe.k_flow(), 5.5615295e-6)
+
+    def assertClose(self, a, b, places=7, delta=None):
+        msg = "%e not close to %e" % (a, b)
+        self.assertAlmostEqual(a/b, 1, places=places, msg=msg, delta=delta)
 
     def test_pipe_energy_flow(self):
         node0 = ConnectionNode()

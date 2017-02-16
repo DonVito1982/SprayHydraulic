@@ -150,6 +150,7 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(self.four_res.detached_nozzle_index, 1)
         self.assertEqual(self.four_res.get_nodes()[1].get_output_pipes(), [])
         self.assertEqual(self.four_res.get_nodes()[1].get_output_flow('gpm'), 6)
+        self.assertEqual(self.four_res.get_nodes()[1].get_pressure('psi'), 36)
 
     def test_detach_node_and_downstream(self):
         nozzle = Nozzle()
@@ -177,38 +178,37 @@ class NozzleNetworkTest(unittest.TestCase):
     def setUp(self):
         self.nozzle_network = PNetwork()
         self.input_node = InputNode()
+        self.input_node.set_elevation(10, 'm')
+        self.nozzle0 = Nozzle()
+        self.nozzle0.set_factor(2, 'gpm/psi^0.5')
+        self.nozzle0.set_required_pressure(25, 'psi')
+        self.end_node0 = EndNode()
+        self.end_node0.set_elevation(10, 'm')
 
     def test_single_nozzle(self):
-        input_node, nozzle0 = self.set_single_nozzle()
+        self.set_single_nozzle()
         self.nozzle_network.solve_remote_nozzle()
         self.check_nozzle_flow(0, 10)
-        self.assertEqual(input_node.get_output_flow('gpm'), -10)
-        nozzle0.set_factor(3, 'gpm/psi^0.5')
+        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -10)
+        self.nozzle0.set_factor(3, 'gpm/psi^0.5')
         self.nozzle_network.solve_remote_nozzle()
         self.check_nozzle_flow(0, 15)
-        self.assertAlmostEqual(input_node.get_output_flow('gpm'), -15)
+        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -15)
+        self.assertEqual(self.input_node.get_pressure('psi'), 25)
 
     def check_nozzle_flow(self, nozzle_index, vol_flow):
         nozzle = self.nozzle_network.get_edges()[nozzle_index]
         self.assertAlmostEqual(nozzle.get_vol_flow('gpm'), vol_flow)
 
     def set_single_nozzle(self):
-        input_node = InputNode()
-        input_node.set_elevation(10, 'm')
-        end_node0 = EndNode()
-        end_node0.set_elevation(10, 'm')
-        self.nozzle_network.add_node(input_node)
-        self.nozzle_network.add_node(end_node0)
-        nozzle0 = Nozzle()
-        nozzle0.set_factor(2, 'gpm/psi^0.5')
-        nozzle0.set_required_pressure(25, 'psi')
-        self.nozzle_network.add_edge(nozzle0)
+        self.nozzle_network.add_node(self.input_node)
+        self.nozzle_network.add_node(self.end_node0)
+        self.nozzle_network.add_edge(self.nozzle0)
         self.nozzle_network.connect_node_downstream_edge(0, 0)
         self.nozzle_network.connect_node_upstream_edge(1, 0)
-        return input_node, nozzle0
 
     def test_two_nozzles(self):
-        input_node, nozzle0, = self.set_single_nozzle()
+        self.set_single_nozzle()
         end_node1 = EndNode()
         end_node1.set_elevation(10, 'm')
         self.nozzle_network.add_node(end_node1)
@@ -221,10 +221,31 @@ class NozzleNetworkTest(unittest.TestCase):
         self.nozzle_network.solve_remote_nozzle()
         self.check_nozzle_flow(1, 6)
         self.check_nozzle_flow(0, 12)
-        self.assertEqual(input_node.get_output_flow('gpm'), -18)
-        nozzle0.set_required_pressure(49, 'psi')
+        self.assertEqual(self.input_node.get_output_flow('gpm'), -18)
+        self.nozzle0.set_required_pressure(49, 'psi')
         self.nozzle_network.solve_remote_nozzle()
-        self.assertAlmostEqual(input_node.get_output_flow('gpm'), -21)
+        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -21)
+
+    def test_input_index_not_0(self):
+        self.nozzle_network.add_node(self.end_node0)
+        self.nozzle_network.add_node(self.input_node)
+        self.nozzle_network.add_edge(self.nozzle0)
+        self.nozzle_network.connect_node_downstream_edge(1, 0)
+        self.nozzle_network.connect_node_upstream_edge(0, 0)
+        self.nozzle_network.solve_remote_nozzle()
+        self.check_nozzle_flow(0, 10)
+        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -10)
+        self.nozzle0.set_factor(3, 'gpm/psi^0.5')
+        self.nozzle_network.solve_remote_nozzle()
+        self.check_nozzle_flow(0, 15)
+        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -15)
+        self.assertEqual(self.input_node.get_pressure('psi'), 25)
+
+    def test_double_input(self):
+        self.set_single_nozzle()
+        input2 = InputNode()
+        self.assertRaises(AttributeError,
+                          lambda: self.nozzle_network.add_node(input2))
 
 
 if __name__ == '__main__':

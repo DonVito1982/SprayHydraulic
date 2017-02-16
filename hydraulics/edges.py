@@ -1,6 +1,5 @@
 from abc import abstractmethod, ABCMeta
-
-
+from math import sqrt
 import physics
 from nodes import Node, EndNode
 
@@ -99,7 +98,7 @@ class Nozzle(Edge):
         else:
             energy_diff = (in_ene - out_ene)
             k_fac = self.get_factor('gpm/psi^0.5')
-            q_flow = energy_diff * k_fac * (abs(energy_diff) ** (-0.5))
+            q_flow = energy_diff * k_fac / sqrt(abs(energy_diff))
         self.set_vol_flow(q_flow, 'gpm')
         return q_flow
 
@@ -108,7 +107,7 @@ class Nozzle(Edge):
         if self.input_node == node:
             k_factor = self.get_factor('gpm/psi^0.5')
             diff = node.get_energy('psi') - self.output_node.get_energy('psi')
-            result += (k_factor / 2.0) * abs(k_factor * diff) ** (-0.5)
+            result += (k_factor * 0.5) / sqrt(abs(k_factor * diff))
         return result
 
     def is_complete(self):
@@ -167,6 +166,7 @@ class Pipe(Edge):
             self.length.set_single_value(value, unit)
         else:
             self.length = physics.Length(value, unit)
+        self.k_pipe = None
 
     def get_length(self, unit):
         """
