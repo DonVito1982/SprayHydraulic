@@ -43,8 +43,8 @@ class Length(Measure):
     Serves to instantiate elevation measures
     """
     units = ['m', 'ft', 'in']
-    conversion = [[1, 3.2808399, 39.37007874],
-                  [1 / 3.2808399, 1, 12.0],
+    conversion = [[1, 3.28083989, 39.37007874],
+                  [1 / 3.28083989, 1, 12.0],
                   [1 / 39.37007874, 1 / 12.0, 1]]
 
 

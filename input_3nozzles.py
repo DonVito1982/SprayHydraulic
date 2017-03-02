@@ -1,6 +1,7 @@
 from hydraulics.pipe_network import PNetwork
 from hydraulics.edges import EndNode, Pipe, Nozzle
 from hydraulics.nodes import InputNode, ConnectionNode
+# from hydraulics.solvers import UserSolver
 
 problem = PNetwork()
 
@@ -17,7 +18,7 @@ for index in range(len(system_nodes)):
     if system_nodes[index] == 'i':
         cur_node = InputNode()
     cur_node.set_elevation(elevations[index], 'm')
-    cur_node.name = index
+    cur_node.name = "%s%d" % (system_nodes[index], index)
     problem.add_node(cur_node)
 
 # SET EDGES
@@ -36,6 +37,7 @@ for pipe_index in range(pipe_count):
 for edge_index in range(3, 6):
     cur_pipe = Nozzle()
     cur_pipe.set_factor(2, 'gpm/psi^0.5')
+    cur_pipe.set_required_pressure(25, 'psi')
     problem.add_edge(cur_pipe)
     problem.set_pipe_name(edge_index, edge_index)
 
@@ -60,5 +62,11 @@ problem.connect_node_upstream_edge(6, 5)
 #     cur_pipe = problem.get_edges()[index]
 #     message = 'complete' if cur_pipe.is_complete() else 'not complete'
 #     print "Pipe #%s is %s" % (cur_pipe.name, message)
-problem._set_active_nodes_indexes()
-problem_size = problem.get_problem_size()
+
+# user_solve = UserSolver(problem)
+# user_solve._set_active_nodes_indexes()
+# user_solve.prepare_solving_conditions()
+# problem_size =  user_solve.size
+
+problem.solve_remote_nozzle()
+problem.show_network()

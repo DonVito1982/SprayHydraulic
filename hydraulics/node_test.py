@@ -26,7 +26,8 @@ class NodeTests(unittest.TestCase):
     def test_elevation(self):
         self.sys_node.set_elevation(8, 'm')
         self.assertEqual(self.sys_node.get_elevation('m'), 8)
-        self.assertAlmostEqual(self.sys_node.get_elevation('ft'), 8 * 3.2808399)
+        elevation = self.sys_node.get_elevation('ft')
+        self.assertAlmostEqual(elevation, 8 * 3.28083989)
 
     def test_energy(self):
         self.sys_node.set_elevation(20, 'm')
