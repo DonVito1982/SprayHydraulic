@@ -29,6 +29,9 @@ class NetworkTests(unittest.TestCase):
     def test_create_network(self):
         self.assertEqual(True, isinstance(self.four_res, PNetwork))
 
+    def test_when_node_at_position_queried_obtained(self):
+        self.assertTrue(self.four_res.node_at(1) is self.node1)
+
     def test_add_nodes(self):
         node2 = ConnectionNode()
         self.assertTrue(self.reserve_node in self.four_res.get_nodes())
@@ -54,7 +57,7 @@ class NetworkTests(unittest.TestCase):
         self.node1.set_pressure(25, 'psi')
         self.node1.name = 'n1'
         index = self.four_res.get_node_index_by_name('n1')
-        node_pressure = self.four_res.get_nodes()[index].get_pressure('psi')
+        node_pressure = self.four_res.node_at(index).get_pressure('psi')
         self.assertEqual(node_pressure, 25)
         self.assertRaises(IndexError,
                           lambda: self.four_res.get_node_index_by_name('n3'))
@@ -99,34 +102,6 @@ class NetworkTests(unittest.TestCase):
         self.assertRaises(IndexError,
                           lambda: self.four_res.set_pipe_name(1, 'p0'))
 
-    def test_delete_nozzle(self):
-        self.nozzle0.set_factor(1, 'gpm/psi^0.5')
-        self.nozzle0.set_required_pressure(36.0, 'psi')
-        nozzle2 = Nozzle()
-        self.four_res.add_edge(nozzle2)
-        for index in range(len(self.four_res.get_edges())):
-            self.four_res.set_pipe_name(index, index)
-        for index in range(len(self.four_res.get_nodes())):
-            self.four_res.set_node_name(index, index)
-        self.four_res.hold_nozzle(1)
-        self.assert_nozzle_deletion()
-        self.four_res.reinsert_nozzle()
-        self.assert_nozzle_insertion()
-
-    def assert_nozzle_insertion(self):
-        self.assertEqual(len(self.four_res.get_edges()), 3)
-        self.assertEqual(self.four_res.get_edges()[1].name, '1')
-        output_name = self.four_res.get_nodes()[1].get_output_pipes()[0].name
-        self.assertEqual(self.four_res.get_nodes()[1].get_output_flow('gpm'), 0)
-        self.assertEqual(output_name, '1')
-
-    def assert_nozzle_deletion(self):
-        self.assertEqual(len(self.four_res.get_edges()), 2)
-        self.assertEqual(self.four_res.detached_nozzle_index, 1)
-        self.assertEqual(self.four_res.get_nodes()[1].get_output_pipes(), [])
-        self.assertEqual(self.four_res.get_nodes()[1].get_output_flow('gpm'), 6)
-        self.assertEqual(self.four_res.get_nodes()[1].get_pressure('psi'), 36)
-
     def test_detach_node_and_downstream(self):
         nozzle = Nozzle()
         self.four_res.add_edge(nozzle)
@@ -148,82 +123,10 @@ class NetworkTests(unittest.TestCase):
         self.assertRaises(ValueError,
                           lambda: self.four_res.separate_node_from_edge(0, 1))
 
-
-class NozzleNetworkTest(unittest.TestCase):
-    def setUp(self):
-        self.nozzle_network = PNetwork()
-        self.input_node = InputNode()
-        self.input_node.set_elevation(10, 'm')
-        self.input_node.name = 'input'
-        self.nozzle0 = Nozzle()
-        self.nozzle0.set_factor(2, 'gpm/psi^0.5')
-        self.nozzle0.set_required_pressure(25, 'psi')
-        self.end_node0 = EndNode()
-        self.end_node0.set_elevation(10, 'm')
-        self.end_node0.name = 'end'
-
-    def test_single_nozzle(self):
-        self.set_single_nozzle()
-        self.nozzle_network.solve_remote_nozzle()
-        self.check_nozzle_flow(0, 10)
-        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -10)
-        self.nozzle0.set_factor(3, 'gpm/psi^0.5')
-        self.nozzle_network.solve_remote_nozzle()
-        self.check_nozzle_flow(0, 15)
-        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -15)
-        self.assertEqual(self.input_node.get_pressure('psi'), 25)
-
-    def check_nozzle_flow(self, nozzle_index, vol_flow):
-        nozzle = self.nozzle_network.get_edges()[nozzle_index]
-        self.assertAlmostEqual(nozzle.get_vol_flow('gpm'), vol_flow)
-
-    def set_single_nozzle(self):
-        self.nozzle_network.add_node(self.input_node)
-        self.nozzle_network.add_node(self.end_node0)
-        self.nozzle_network.add_edge(self.nozzle0)
-        self.nozzle_network.connect_node_downstream_edge(0, 0)
-        self.nozzle_network.connect_node_upstream_edge(1, 0)
-
-    def test_two_nozzles(self):
-        self.set_single_nozzle()
-        end_node1 = EndNode()
-        end_node1.set_elevation(10, 'm')
-        self.nozzle_network.add_node(end_node1)
-        nozzle1 = Nozzle()
-        nozzle1.set_factor(1, 'gpm/psi^0.5')
-        nozzle1.set_required_pressure(36, 'psi')
-        self.nozzle_network.add_edge(nozzle1)
-        self.nozzle_network.connect_node_downstream_edge(0, 1)
-        self.nozzle_network.connect_node_upstream_edge(2, 1)
-        self.nozzle_network.solve_remote_nozzle()
-        self.check_nozzle_flow(1, 6)
-        self.check_nozzle_flow(0, 12)
-        self.assertEqual(self.input_node.get_output_flow('gpm'), -18)
-        self.nozzle0.set_required_pressure(49, 'psi')
-        self.nozzle_network.solve_remote_nozzle()
-        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -21)
-
-    def test_input_index_not_0(self):
-        self.nozzle_network.add_node(self.end_node0)
-        self.nozzle_network.add_node(self.input_node)
-        self.nozzle_network.add_edge(self.nozzle0)
-        self.nozzle_network.connect_node_downstream_edge(1, 0)
-        self.nozzle_network.connect_node_upstream_edge(0, 0)
-        # print self.nozzle0.input_node.name
-        self.nozzle_network.solve_remote_nozzle()
-        self.check_nozzle_flow(0, 10)
-        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -10)
-        self.nozzle0.set_factor(3, 'gpm/psi^0.5')
-        self.nozzle_network.solve_remote_nozzle()
-        self.check_nozzle_flow(0, 15)
-        self.assertAlmostEqual(self.input_node.get_output_flow('gpm'), -15)
-        self.assertEqual(self.input_node.get_pressure('psi'), 25)
-
-    def test_double_input(self):
-        self.set_single_nozzle()
-        input2 = InputNode()
-        self.assertRaises(AttributeError,
-                          lambda: self.nozzle_network.add_node(input2))
+    def test_input_index_is_3_when_fourth_node_is_input(self):
+        input_node = InputNode()
+        self.four_res.add_node(input_node)
+        self.assertEqual(self.four_res.search_input_index(), 3)
 
 
 if __name__ == '__main__':

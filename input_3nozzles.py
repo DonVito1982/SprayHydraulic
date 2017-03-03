@@ -2,6 +2,7 @@ from hydraulics.pipe_network import PNetwork
 from hydraulics.edges import EndNode, Pipe, Nozzle
 from hydraulics.nodes import InputNode, ConnectionNode
 # from hydraulics.solvers import UserSolver
+from hydraulics.solvers import RemoteNozzleSolver
 
 problem = PNetwork()
 
@@ -68,5 +69,7 @@ problem.connect_node_upstream_edge(6, 5)
 # user_solve.prepare_solving_conditions()
 # problem_size =  user_solve.size
 
-problem.solve_remote_nozzle()
+# problem.solve_remote_nozzle()
+remote_solver = RemoteNozzleSolver(problem)
+remote_solver.solve_system()
 problem.show_network()
