@@ -1,5 +1,7 @@
-WMETER_TO_PSI = 1.422295231
-GAL_TO_LT = 3.7848
+WMETER_TO_PSI = 1.4219702
+# GAL_TO_LT = 3.785411
+PSI_TO_KPA = 6.894757
+IN_TO_MM = 25.4
 
 
 class Measure(object):
@@ -32,9 +34,10 @@ class Pressure(Measure):
     This class will serve to instantiate _pressure measures
     """
     units = ['psi', 'Pa', 'kPa', 'mH2O']
-    conversion = [[1, 6894.757, 6.894757, 1 / WMETER_TO_PSI],
-                  [1 / 6894.757, 1, 1e-3, 0.000101974],
-                  [1 / 6.894757, 1e3, 1, 0.101974],
+    conversion = [[1, 1000 * PSI_TO_KPA, PSI_TO_KPA, 1 / WMETER_TO_PSI],
+                  [0.001 / PSI_TO_KPA, 1, 1e-3,
+                   PSI_TO_KPA * 1000 / WMETER_TO_PSI],
+                  [1 / PSI_TO_KPA, 1e3, 1, PSI_TO_KPA / WMETER_TO_PSI],
                   [WMETER_TO_PSI, 9806.38, 9.80638, 1]]
 
 
@@ -42,14 +45,17 @@ class Length(Measure):
     """
     Serves to instantiate elevation measures
     """
-    units = ['m', 'ft', 'in']
-    conversion = [[1, 3.28083989, 39.37007874],
-                  [1 / 3.28083989, 1, 12.0],
-                  [1 / 39.37007874, 1 / 12.0, 1]]
+    units = ['m', 'ft', 'in', 'mm']
+    ft_to_mm = IN_TO_MM * 12
+    conversion = [[1, 1000 / ft_to_mm, 1000 / IN_TO_MM, 1000],
+                  [ft_to_mm / 1000, 1, 12.0, ft_to_mm],
+                  [IN_TO_MM / 1000, 1 / 12.0, 1, IN_TO_MM],
+                  [0.001, 1 / ft_to_mm, 1 / IN_TO_MM, 1]]
 
 
 class Volume(Measure):
     units = ['lt', 'gal', 'm3']
+    GAL_TO_LT = 3.785411
     conversion = [[1, 1 / GAL_TO_LT, 0.001],
                   [GAL_TO_LT, 1, GAL_TO_LT / 1000],
                   [1000, 1000 / GAL_TO_LT, 1]]
@@ -72,7 +78,7 @@ class VolFlow(Measure):
     conversion = [[1, gal_to_m3 * 60, Volume.conversion[1][0]],
                   [Volume.conversion[2][1] * Time.conversion[0][1], 1,
                    1000 / 60.0],
-                  [1 / GAL_TO_LT, 60 / 1000.0, 1]]
+                  [1 / Volume.GAL_TO_LT, 60 / 1000.0, 1]]
 
 
 class NozzleK(Measure):
@@ -80,5 +86,5 @@ class NozzleK(Measure):
     psi_index = Pressure.units.index('psi')
     kPa_index = Pressure.units.index('kPa')
     psi_to_kPa = Pressure.conversion[psi_index][kPa_index]
-    conversion = [[1, GAL_TO_LT * (100 / psi_to_kPa) ** .5],
-                  [((psi_to_kPa / 100) ** .5) / GAL_TO_LT, 1]]
+    conversion = [[1, Volume.GAL_TO_LT * (100 / psi_to_kPa) ** .5],
+                  [((psi_to_kPa / 100) ** .5) / Volume.GAL_TO_LT, 1]]

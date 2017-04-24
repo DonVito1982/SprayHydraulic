@@ -96,7 +96,7 @@ class ExampleTests(unittest.TestCase):
 
     def set_4_reservoir_edges(self):
         lengths = [1000, 1200, 900, 500, 600]
-        inner_diameters = [10.75, 7.981, 7.981, 6.065, 6.065]
+        inner_diameters = [10.02, 7.981, 7.981, 6.065, 6.065]
         pipe_count = len(lengths)
         for pipe_index in range(pipe_count):
             cur_pipe = Pipe()
@@ -108,17 +108,17 @@ class ExampleTests(unittest.TestCase):
 
     def check_4_reservoir_flow(self):
         number_of_edges = len(self.pipe_network.get_edges())
-        test_flows = [1135.2443, -383.5847, 751.6596, 394.3143, 357.3453]
+        test_flows = [1041.6261, -318.1786, 723.44747, 379.51588, 343.9316]
         for cont in range(number_of_edges):
-            cur_edge = self.pipe_network.get_edges()[cont]
+            cur_edge = self.pipe_network.edge_at(cont)
             cur_flow = cur_edge.get_gpm_flow()
             self.assertAlmostEquals(cur_flow, test_flows[cont], 4)
 
     def check_4_reservoir_pressures(self):
         number_of_nodes = len(self.pipe_network.get_nodes())
-        test_press = [0, 0, 0, 0, 30.016, 7.383]
+        test_press = [0, 0, 0, 0, 27.4694, 6.39082]
         for cont in range(number_of_nodes):
-            cur_node = self.pipe_network.get_nodes()[cont]
+            cur_node = self.pipe_network.node_at(cont)
             cur_pressure = cur_node.get_pressure('psi')
             self.assertAlmostEquals(cur_pressure, test_press[cont], 3)
 
@@ -186,18 +186,18 @@ class ExampleTests(unittest.TestCase):
         self.connect_edge_to_up_node_and_down_node(7, 8, 7)
 
     def check_reservoir_nozzle_nodes_energy(self):
-        node_psi_energies = [42.6689, 49.7803, 41.8689, 40.0016, 37.3237,
-                             0, 0, 0, 36.5887]
+        node_psi_energies = [42.6591, 49.76896, 41.85877, 39.99165, 37.31384,
+                             0, 0, 0, 36.57881]
         for node_index in range(len(self.pipe_network.get_nodes())):
             cur_node = self.pipe_network.get_nodes()[node_index]
             cur_energy = cur_node.get_energy('psi')
             self.assertAlmostEqual(cur_energy, node_psi_energies[node_index], 4)
 
     def check_reservoir_nozzle_edge_flows(self):
-        edge_flows = [9.8088, 27.1569, 36.9657, 24.3163, 12.0977,
-                      12.6494, 12.2186, 12.0977]
+        edge_flows = [9.80918, 27.1517, 36.96088, 24.31309, 12.09608,
+                      12.64779, 12.21701, 12.09608]
         for edge_index in range(8):
-            cur_flow = self.pipe_network.get_edges()[edge_index].get_gpm_flow()
+            cur_flow = self.pipe_network.edge_at(edge_index).get_gpm_flow()
             self.assertAlmostEqual(cur_flow, edge_flows[edge_index], 4)
 
     def connect_edge_to_up_node_and_down_node(self, edge_index, up_node,
@@ -260,13 +260,13 @@ class ExampleTests(unittest.TestCase):
         self.connect_edge_to_up_node_and_down_node(5, 3, 6)
 
     def check_3_nozzles_nodes_pressure(self):
-        checked_pressures = [31.4910, 27.3991, 25.5165, 25]
+        checked_pressures = [31.4923, 27.3997, 25.5167, 25]
         for cont in range(4):
-            pressure = self.pipe_network.get_nodes()[cont].get_pressure('psi')
+            pressure = self.pipe_network.node_at(cont).get_pressure('psi')
             self.assertAlmostEqual(pressure, checked_pressures[cont], 4)
 
     def check_3_nozzles_edges_gpm_flow(self):
-        checked_flows = [30.5716, 20.1028, 10, 10.4688, 10.1028, 10]
+        checked_flows = [30.5718, 20.1028, 10, 10.4689, 10.1028, 10]
         edges = self.pipe_network.get_edges()
         for cont in range(len(edges)):
             cur_flow = edges[cont].get_gpm_flow()
@@ -326,7 +326,7 @@ class NozzleNetworkTest(unittest.TestCase):
         self.assertEqual(self.input_node.get_pressure('psi'), 25)
 
     def check_nozzle_flow(self, nozzle_index, vol_flow):
-        nozzle = self.nozzle_network.get_edges()[nozzle_index]
+        nozzle = self.nozzle_network.edge_at(nozzle_index)
         self.assertAlmostEqual(nozzle.get_vol_flow('gpm'), vol_flow)
 
     def set_single_nozzle(self):

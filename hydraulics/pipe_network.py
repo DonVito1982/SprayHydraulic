@@ -1,6 +1,4 @@
-from edges import Nozzle
-from nodes import ConnectionNode, InputNode, EndNode
-from math import sqrt
+from nodes import InputNode, EndNode
 
 
 class PNetwork(object):
@@ -41,7 +39,7 @@ class PNetwork(object):
             if node.name == name:
                 return cont
             cont += 1
-        raise IndexError
+        raise ValueError
 
     def get_edge_index_by_name(self, name):
         cont = 0
@@ -52,14 +50,14 @@ class PNetwork(object):
         raise IndexError
 
     def connect_node_upstream_edge(self, node_index, edge_index):
-        node = self._net_nodes[node_index]
-        edge = self.get_edges()[edge_index]
+        node = self.node_at(node_index)
+        edge = self.edge_at(edge_index)
         node.set_input_pipe(edge)
         edge.output_node = node
 
     def connect_node_downstream_edge(self, node_index, edge_index):
-        node = self._net_nodes[node_index]
-        edge = self.get_edges()[edge_index]
+        node = self.node_at(node_index)
+        edge = self.edge_at(edge_index)
         node.set_output_pipe(edge)
         edge.input_node = node
 
@@ -71,46 +69,40 @@ class PNetwork(object):
 
     def set_pipe_name(self, index, name):
         for pipe in self._net_edges:
-            if pipe.name == name:
-                raise IndexError
-        self._net_edges[index].name = name
+            if pipe.name == str(name):
+                raise IndexError('Nombre %s usado para %d' % (str(name), index))
+        self.edge_at(index).name = name
 
     def separate_node_from_edge(self, node_index, edge_index):
-        edge = self.get_edges()[edge_index]
-        node = self.get_nodes()[node_index]
+        edge = self.edge_at(edge_index)
+        node = self.node_at(node_index)
         if node is edge.input_node:
             self._separate_edge_from_input(edge_index, node_index)
         elif node is edge.output_node:
             self._separate_edge_from_output(edge_index, node_index)
         else:
-            raise ValueError
+            raise IndexError
 
     def _separate_edge_from_output(self, edge_index, node_index):
-        connected_pipes = self.get_nodes()[node_index].get_input_pipes()
+        connected_pipes = self.node_at(node_index).get_input_pipes()
         for e_index in range(len(connected_pipes)):
-            if connected_pipes[e_index] is self.get_edges()[edge_index]:
-                self.get_nodes()[node_index].remove_input(e_index)
-        self.get_edges()[edge_index].clear_output()
+            if connected_pipes[e_index] is self.edge_at(edge_index):
+                self.node_at(node_index).remove_input(e_index)
+                break
+        self.edge_at(edge_index).clear_output()
 
     def _separate_edge_from_input(self, edge_index, node_index):
-        connected_pipes = self.get_nodes()[node_index].get_output_pipes()
+        connected_pipes = self.node_at(node_index).get_output_pipes()
         for e_index in range(len(connected_pipes)):
-            separated_edge = self.get_edges()[edge_index]
+            separated_edge = self.edge_at(edge_index)
             if connected_pipes[e_index] is separated_edge:
-                self.get_nodes()[node_index].remove_output(e_index)
+                self.node_at(node_index).remove_output(e_index)
                 break
         self.edge_at(edge_index).clear_input()
 
-    def _set_nozzle_output_flow(self, noz_index, input_index):
-        detached_nozzle = self.get_edges()[noz_index]
-        k_factor = detached_nozzle.get_factor('gpm/psi^0.5')
-        pressure = detached_nozzle.get_required_pressure('psi')
-        out_flow = k_factor * sqrt(pressure)
-        self.get_nodes()[input_index].set_output_flow(out_flow, 'gpm')
-
     def search_input_index(self):
         for cont in range(len(self._net_nodes)):
-            if isinstance(self._net_nodes[cont], InputNode):
+            if isinstance(self.node_at(cont), InputNode):
                 return cont
 
     def show_network(self):

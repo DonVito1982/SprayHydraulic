@@ -13,6 +13,7 @@ class Solver(object):
     __metaclass__ = ABCMeta
 
     def __init__(self, network):
+        # type: (PNetwork) -> None
         assert isinstance(network, PNetwork)
         self.network = network
         self.size = None
@@ -39,12 +40,9 @@ class Solver(object):
         return deviation < 1e-4
 
     def _set_active_nodes_indexes(self):
-        self._active_indexes = []
-        node_count = 0
-        for node in self.network.get_nodes():
-            if isinstance(node, ConnectionNode):
-                self._active_indexes.append(node_count)
-            node_count += 1
+        all_nodes = self.network.get_nodes()
+        self._active_indexes = [index for index in xrange(len(all_nodes))
+                                if isinstance(all_nodes[index], ConnectionNode)]
 
     def f_equations(self):
         resp = np.zeros([self.size, 1])
@@ -83,6 +81,7 @@ class Solver(object):
 
 class UserSolver(Solver):
     def __init__(self, network):
+        # type: (PNetwork) -> None
         Solver.__init__(self, network)
 
     def solve_system(self):
@@ -160,8 +159,7 @@ class RemoteNozzleSolver(Solver):
         for pair in self._nozzle_index_solved_status_hash:
             output_flow -= self.network.edge_at(pair[0]).get_gpm_flow()
         input_index = self.network.search_input_index()
-        self.network.node_at(input_index).set_output_flow(output_flow,
-                                                          'gpm')
+        self.network.node_at(input_index).set_output_flow(output_flow, 'gpm')
 
     def remote_nozzle_initialize(self):
         for node in self.network.get_nodes():

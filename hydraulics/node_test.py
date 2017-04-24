@@ -16,7 +16,7 @@ class NodeTests(unittest.TestCase):
         self.assertEqual(self.sys_node.get_pressure("psi"), 8)
         self.assertAlmostEqual(self.sys_node.get_pressure("Pa"), 8 * 6894.757)
         self.assertAlmostEqual(self.sys_node.get_pressure('kPa'), 8 * 6.894757)
-        self.assertAlmostEqual(self.sys_node.get_pressure('mH2O'), 5.624711256)
+        self.assertAlmostEqual(self.sys_node.get_pressure('mH2O'), 5.625996944)
         self.sys_node.set_pressure(40000, 'Pa')
         self.assertAlmostEqual(self.sys_node.get_pressure('psi'), 5.80150975589)
         self.sys_node.set_pressure(100, 'mH2O')
@@ -29,18 +29,18 @@ class NodeTests(unittest.TestCase):
         elevation = self.sys_node.get_elevation('ft')
         self.assertAlmostEqual(elevation, 8 * 3.28083989)
 
-    def test_energy(self):
+    def test_when_elevation_and_pressure_set_get_energy(self):
         self.sys_node.set_elevation(20, 'm')
         self.sys_node.set_pressure(20, 'mH2O')
         self.assertEqual(self.sys_node.get_energy('mH2O'), 40)
         self.sys_node.set_pressure(15, 'psi')
-        self.assertAlmostEqual(self.sys_node.get_energy('psi'), 43.44590462)
+        self.assertAlmostEqual(self.sys_node.get_energy('psi'), 43.439404)
 
     def test_name(self):
         self.sys_node.name = 1
         self.assertEqual(self.sys_node.name, '1')
 
-    def test_energy_pressure_elevation_combo(self):
+    def test_when_elevation_and_energy_set_get_pressure(self):
         self.sys_node.set_elevation(20, 'm')
         self.sys_node.set_energy(35, 'mH2O')
         self.assertEqual(self.sys_node.get_pressure('mH2O'), 15)
@@ -64,6 +64,7 @@ class NodeTests(unittest.TestCase):
         node = EndNode()
         node.set_elevation(10, 'm')
         self.assertEqual(node.get_energy('mH2O'), 10)
+        self.assertAlmostEqual(node.get_energy('psi'), 14.219702)
 
     def test_initial_flow_output(self):
         self.assertEqual(self.sys_node.get_output_flow('gpm'), 0)
@@ -71,9 +72,9 @@ class NodeTests(unittest.TestCase):
     def test_flow_output(self):
         self.sys_node.set_output_flow(20, 'gpm')
         self.assertEqual(self.sys_node.get_output_flow('gpm'), 20)
-        self.assertAlmostEqual(self.sys_node.get_output_flow('m3/H'), 4.5418, 4)
+        self.assertAlmostEqual(self.sys_node.get_output_flow('m3/H'), 4.5425, 4)
 
-    def test_input_node(self):
+    def test_input_node_is_connection_node(self):
         in_node = InputNode()
         self.assertTrue(isinstance(in_node, ConnectionNode))
 

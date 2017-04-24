@@ -127,12 +127,7 @@ class Nozzle(Edge):
 
 
 class Pipe(Edge):
-    """A cylindrical pipe through which water flows
-
-    It doesn't need any parameters for initializing, instead it's given
-    attributes through the following methods
-    """
-    C_POWER = 1.852
+    C_POWER = 1 / 0.54
 
     def __init__(self):
         super(Pipe, self).__init__()
@@ -251,3 +246,57 @@ class Pipe(Edge):
         if not isinstance(node, Node):
             raise ValueError('Must be node')
         self._output_node = node
+
+
+class ANSIPipe(Pipe):
+    schedules = ('Std', '80')
+    in_diams = {2: (2.067, 1.939),
+                3: (3.068, 2.9)}
+    mm_diams = {50: (52.48, 49.22),
+                80: (77.92, 73.66)}
+
+    def __init__(self):
+        super(ANSIPipe, self).__init__()
+        self._nominal_diameter = None
+        self.c_coefficient = 100
+        self._schedule = None
+        self._unit = None
+
+    @property
+    def nominal_diameter(self):
+        return self._nominal_diameter
+
+    @nominal_diameter.setter
+    def nominal_diameter(self, diameter):
+        self._nominal_diameter = diameter
+        if self._schedule and self._unit:
+            self.set_diam()
+
+    @property
+    def diam_unit(self):
+        return self._unit
+
+    @diam_unit.setter
+    def diam_unit(self, unit):
+        self._unit = unit
+        if self._schedule and self._nominal_diameter:
+            self.set_diam()
+
+    @property
+    def schedule(self):
+        return self._schedule
+
+    @schedule.setter
+    def schedule(self, schedule):
+        self._schedule = str(schedule)
+        if self._nominal_diameter and self._unit:
+            self.set_diam()
+
+    def set_diam(self):
+        sch_index = self.schedules.index(self.schedule)
+        nom_diam = self.nominal_diameter
+        if self._unit == 'in':
+            unit_diams = self.in_diams
+        elif self._unit == 'mm':
+            unit_diams = self.mm_diams
+        self.set_inner_diam(unit_diams[nom_diam][sch_index], self._unit)

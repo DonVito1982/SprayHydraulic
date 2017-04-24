@@ -1,6 +1,6 @@
 import unittest
 
-from edges import Pipe, Nozzle, Edge
+from edges import Pipe, Nozzle, Edge, ANSIPipe
 from nodes import ConnectionNode, EndNode
 
 
@@ -15,6 +15,10 @@ class PipeTest(unittest.TestCase):
         self.assertAlmostEqual(self.sys_pipe.get_length('in'), 78.740158, 4)
         self.sys_pipe.set_length(12, 'in')
         self.assertEqual(self.sys_pipe.get_length('ft'), 1)
+
+    def test_when_length_set_in_ft_rest_of_units_ok(self):
+        self.sys_pipe.set_length(2.5, 'ft')
+        self.assertAlmostEqual(self.sys_pipe.get_length('m'), 0.762)
 
     def test_input(self):
         input_node = ConnectionNode()
@@ -69,12 +73,13 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_inner_diam(12, 'in')
         self.assertEqual(self.sys_pipe.get_inner_diam('in'), 12)
         self.assertEqual(self.sys_pipe.get_inner_diam('ft'), 1)
+        self.assertAlmostEqual(self.sys_pipe.get_inner_diam('m'), 0.3048)
 
     def test_vol_flow(self):
         self.sys_pipe.set_vol_flow(200, 'gpm')
         self.assertEqual(self.sys_pipe.get_vol_flow('gpm'), 200)
-        self.assertAlmostEqual(self.sys_pipe.get_vol_flow('m3/H'), 45.4176)
-        self.assertAlmostEqual(self.sys_pipe.get_vol_flow('lpm'), 756.96)
+        self.assertAlmostEqual(self.sys_pipe.get_vol_flow('m3/H'), 45.424932)
+        self.assertAlmostEqual(self.sys_pipe.get_vol_flow('lpm'), 757.0822)
 
     def test_hazen_williams_loss(self):
         self.sys_pipe.set_length(82, 'ft')
@@ -82,7 +87,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_vol_flow(200, 'gpm')
         self.sys_pipe.set_c_coefficient(100)
         loss = self.sys_pipe.get_hazen_williams_loss('psi')
-        self.assertAlmostEqual(loss, 1.5160886, 4)
+        self.assertAlmostEqual(loss, 1.51593, 4)
 
     def test_negative_flow_loss(self):
         self.sys_pipe.set_length(82, 'ft')
@@ -90,7 +95,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_vol_flow(-200, 'gpm')
         self.sys_pipe.set_c_coefficient(100)
         loss = self.sys_pipe.get_hazen_williams_loss('psi')
-        self.assertAlmostEqual(loss, -1.5160886, 4)
+        self.assertAlmostEqual(loss, -1.51593, 4)
 
     def test_c_coefficient(self):
         self.sys_pipe.set_c_coefficient(100)
@@ -163,9 +168,9 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_c_coefficient(100)
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10.75, 'in')
-        self.assertAlmostEqual(self.sys_pipe.k_flow()/2.7807647e-6, 1)
+        self.assertClose(self.sys_pipe.k_flow(), 2.78266257e-6)
         self.sys_pipe.set_length(200, 'm')
-        self.assertClose(self.sys_pipe.k_flow(), 5.5615295e-6)
+        self.assertClose(self.sys_pipe.k_flow(), 5.56532515e-6)
 
     def assertClose(self, a, b, places=7, delta=None):
         msg = "%e not close to %e" % (a, b)
@@ -184,7 +189,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10.75, 'in')
         self.sys_pipe.get_gpm_flow()
-        self.assertAlmostEqual(self.sys_pipe.get_vol_flow('gpm'), 1135.244, 5)
+        self.assertClose(self.sys_pipe.get_vol_flow('gpm'), 1135.4647, 5)
 
     def test_pipe_negative_energy_flow(self):
         node0 = ConnectionNode()
@@ -199,7 +204,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10.75, 'in')
         self.sys_pipe.get_gpm_flow()
-        self.assertAlmostEqual(self.sys_pipe.get_vol_flow('gpm'), -1135.244, 5)
+        self.assertClose(self.sys_pipe.get_vol_flow('gpm'), -1135.4647, 5)
 
     def test_pipe_zero_energy_flow(self):
         node0 = ConnectionNode()
@@ -226,11 +231,39 @@ class PipeTest(unittest.TestCase):
         node_o.set_energy(90, 'psi')
         self.sys_pipe.input_node = node_i
         self.sys_pipe.output_node = node_o
-        result = 626.5655816
+        result = 626.507748
         self.assertAlmostEqual(self.sys_pipe.get_node_jacobian(node_i),
                                result, 5)
         self.assertAlmostEqual(self.sys_pipe.get_node_jacobian(node_o),
                                -result, 5)
+
+    def test_when_create_80mm_pipe_get_also_other_unit_diameter(self):
+        self.sys_pipe.set_inner_diam(25.4, 'mm')
+        self.assertAlmostEqual(self.sys_pipe.get_inner_diam('in'), 1)
+        self.assertAlmostEqual(self.sys_pipe.get_inner_diam('ft'), 1/12.0)
+        self.assertEqual(self.sys_pipe.get_inner_diam('m'), 0.0254)
+
+
+class SteelPipeTests(unittest.TestCase):
+    def setUp(self):
+        self.pipe0 = ANSIPipe()
+
+    def test_when_steel_pipe_created_C_is_100(self):
+        self.assertEqual(self.pipe0.get_c_coefficient(), 100)
+
+    def test_set_schedule_to_80(self):
+        self.pipe0.schedule = 80
+        self.assertEqual(self.pipe0.schedule, '80')
+
+    def test_when_diam_is_2_and_sch_is_std_inner_diam_is_2067(self):
+        self.pipe0.nominal_diameter = 2
+        self.pipe0.schedule = 'Std'
+        self.assertEqual(self.pipe0.get_inner_diam('in'), 2.067)
+
+    def test_when_diam_3_and_sch_80__in_diam_29(self):
+        self.pipe0.nominal_diameter = 3
+        self.pipe0.schedule = 80
+        self.assertEqual(self.pipe0.get_inner_diam('in'), 2.9)
 
 
 class NozzleTests(unittest.TestCase):
@@ -251,49 +284,33 @@ class NozzleTests(unittest.TestCase):
         other_node = ConnectionNode()
         self.nozzle0.input_node = self.in_node
         self.assertEqual(self.nozzle0.input_node, self.in_node)
-        fail = False
-        try:
+        with self.assertRaises(IndexError):
             self.nozzle0.input_node = other_node
-        except IndexError:
-            fail = True
-        self.assertTrue(fail)
 
     def test_false_input(self):
         false_input = 'false node'
-        fail = False
-        try:
+        with self.assertRaises(ValueError):
             self.nozzle0.input_node = false_input
-        except ValueError:
-            fail = True
-        self.assertTrue(fail)
 
     def test_output(self):
         self.nozzle0.output_node = self.out_node
         self.assertEqual(self.nozzle0.output_node, self.out_node)
 
     def test_end_output(self):
-        fail = False
-        try:
+        with self.assertRaises(ValueError):
             self.nozzle0.output_node = self.in_node
-        except ValueError:
-            fail = True
-        self.assertTrue(fail)
 
     def test_repeated_output(self):
         other_node = EndNode()
         self.nozzle0.output_node = self.out_node
-        fail = False
-        try:
+        with self.assertRaises(ValueError):
             self.nozzle0.output_node = other_node
-        except ValueError:
-            fail = True
-        self.assertTrue(fail)
 
     def test_k_factor(self):
         self.nozzle0.set_factor(1.2, 'gpm/psi^0.5')
         k_lpm = self.nozzle0.get_factor('lpm/bar^0.5')
-        self.assertAlmostEqual(k_lpm, 17.296757, 5)
-        self.nozzle0.set_factor(17.29675758, 'lpm/bar^0.5')
+        self.assertAlmostEqual(k_lpm, 17.29954989, 5)
+        self.nozzle0.set_factor(17.29954989, 'lpm/bar^0.5')
         self.assertAlmostEqual(self.nozzle0.get_factor('gpm/psi^0.5'), 1.2)
 
     def test_gpm_flow(self):

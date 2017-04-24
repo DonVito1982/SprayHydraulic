@@ -26,7 +26,7 @@ for node_index in range(end_count, node_count):
 
 # SET PIPES
 lengths = [1000, 1200, 900, 500, 600]
-inner_diameters = [10.75, 7.981, 7.981, 6.065, 6.065]
+inner_diameters = [10.02, 7.981, 7.981, 6.065, 6.065]
 
 pipe_count = len(lengths)
 for pipe_index in range(pipe_count):
@@ -50,17 +50,16 @@ network.connect_node_upstream_edge(2, 3)
 network.connect_node_upstream_edge(3, 4)
 
 # OUTPUT FLOW AT NODE 4
-network.get_nodes()[4].set_output_flow(200, 'gpm')
+# network.get_nodes()[4].set_output_flow(200, 'gpm')
 
 user_solver = UserSolver(network)
 user_solver.solve_system()
 
 
 # FLOW CHECK
-test_flows = [1135.2443, -383.5847, 751.6596, 394.3143, 357.3453]
 for cont in range(pipe_count):
     cur_pipe = network.get_edges()[cont]
-    print "p%s) flow %.3f gpm" % (cur_pipe.name, cur_pipe.get_gpm_flow())
+    print "p%s) flow %.4f gpm" % (cur_pipe.name, cur_pipe.get_gpm_flow())
 
 # PRESSURE CHECK
 test_press = [0, 0, 0, 0, 30.016, 7.383]

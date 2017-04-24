@@ -7,7 +7,7 @@ if __name__ == '__main__':
     w = QWidget()
     w.resize(250, 150)
     w.move(300, 300)
-    w.setWindowTitle('Complejo')
+    w.setWindowTitle('Complex')
     w.show()
 
     sys.exit(app.exec_())
