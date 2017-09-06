@@ -8,6 +8,7 @@ class PNetwork(object):
         self._deleted_edge = None
         self.detached_nozzle_index = None
         self.unplugged_node_index = None
+        self._visited_nodes = None
 
     def add_node(self, node):
         assert node not in self._net_nodes
@@ -113,3 +114,19 @@ class PNetwork(object):
         print "\nEdge Volumetric Flow (psi)"
         for edge in self._net_edges:
             print "%s: %.4f gpm" % (edge.name, edge.get_gpm_flow())
+
+    def is_connected(self):
+        for edge in self._net_edges:
+            if not edge.connects():
+                return False
+        self._visited_nodes = []
+        self._visit(self.node_at(0))
+        return set(self._visited_nodes) == set(self._net_nodes)
+
+    def _visit(self, cur_node):
+        down_nodes = [edge.output_node for edge in cur_node.get_output_pipes()]
+        up_nodes = [edge.input_node for edge in cur_node.get_input_pipes()]
+        self._visited_nodes.append(cur_node)
+        for node in (down_nodes + up_nodes):
+            if node not in self._visited_nodes:
+                self._visit(node)

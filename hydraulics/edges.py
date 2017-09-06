@@ -65,6 +65,9 @@ class Edge(object):
             raise ValueError
         self._input_node = node
 
+    def connects(self):
+        return bool(self._input_node and self._output_node)
+
 
 class Nozzle(Edge):
     def __init__(self):

@@ -150,5 +150,40 @@ class NetworkTests(unittest.TestCase):
         self.assertEqual(self.four_res.search_input_index(), 3)
 
 
+class CompletenessTests(unittest.TestCase):
+    def test_complete_network_creation_evaluates_to_completed(self):
+        pipe_network = self.build_small_network()
+        pipe_network.connect_node_downstream_edge(0, 0)
+        pipe_network.connect_node_upstream_edge(1, 0)
+        self.assertTrue(pipe_network.is_connected())
+
+    @staticmethod
+    def build_small_network():
+        node0 = ConnectionNode()
+        node0.name = 'n0'
+        pipe0 = Pipe()
+        pipe0.name = 'p1'
+        node1 = EndNode()
+        node1.name = 'n1'
+        pipe_network = PNetwork()
+        pipe_network.add_node(node0)
+        pipe_network.add_node(node1)
+        pipe_network.add_edge(pipe0)
+        return pipe_network
+
+    def test_incomplete_network_evaluates_to_incomplete(self):
+        pipe_network = CompletenessTests.build_small_network()
+        pipe_network.connect_node_downstream_edge(0, 0)
+        self.assertFalse(pipe_network.is_connected())
+
+    def test_not_connected_network_evaluates_to_incomplete(self):
+        p_network = self.build_small_network()
+        p_network.connect_node_downstream_edge(0, 0)
+        p_network.connect_node_upstream_edge(1, 0)
+        node2 = ConnectionNode()
+        p_network.add_node(node2)
+        self.assertFalse(p_network.is_connected())
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -258,11 +258,13 @@ class SteelPipeTests(unittest.TestCase):
     def test_when_diam_is_2_and_sch_is_std_inner_diam_is_2067(self):
         self.pipe0.nominal_diameter = 2
         self.pipe0.schedule = 'Std'
+        self.pipe0.diam_unit = 'in'
         self.assertEqual(self.pipe0.get_inner_diam('in'), 2.067)
 
     def test_when_diam_3_and_sch_80__in_diam_29(self):
         self.pipe0.nominal_diameter = 3
         self.pipe0.schedule = 80
+        self.pipe0.diam_unit = 'in'
         self.assertEqual(self.pipe0.get_inner_diam('in'), 2.9)
 
 

@@ -61,6 +61,7 @@ class UserDefinedNetworks(unittest.TestCase):
 class ExampleTests(unittest.TestCase):
     def test_four_reservoir(self):
         self.set_4_reservoir_network()
+        self.assertTrue(self.pipe_network.is_connected())
         user_solve = UserSolver(self.pipe_network)
         user_solve.solve_system()
         self.check_4_reservoir_flow()
@@ -131,6 +132,7 @@ class ExampleTests(unittest.TestCase):
 
     def test_reservoir_nozzle(self):
         self.set_reservoir_nozzles_network()
+        self.assertTrue(self.pipe_network.is_connected())
         user_defined = UserSolver(self.pipe_network)
         user_defined.solve_system()
         self.check_reservoir_nozzle_nodes_energy()
