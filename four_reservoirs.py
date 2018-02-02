@@ -59,7 +59,7 @@ user_solver.solve_system()
 # FLOW CHECK
 for cont in range(pipe_count):
     cur_pipe = network.get_edges()[cont]
-    print "p%s) flow %.4f gpm" % (cur_pipe.name, cur_pipe.get_gpm_flow())
+    print "p%s) flow %.4f gpm" % (cur_pipe.name, cur_pipe.calculate_gpm_flow())
 
 # PRESSURE CHECK
 test_press = [0, 0, 0, 0, 30.016, 7.383]

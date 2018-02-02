@@ -113,7 +113,7 @@ class PNetwork(object):
                 print "%s: %.4f psi" % (node.name, node.get_pressure('psi'))
         print "\nEdge Volumetric Flow (psi)"
         for edge in self._net_edges:
-            print "%s: %.4f gpm" % (edge.name, edge.get_gpm_flow())
+            print "%s: %.4f gpm" % (edge.name, edge.calculate_gpm_flow())
 
     def is_connected(self):
         for edge in self._net_edges:

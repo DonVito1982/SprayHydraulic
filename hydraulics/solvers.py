@@ -12,12 +12,13 @@ from pipe_network import PNetwork
 class Solver(object):
     __metaclass__ = ABCMeta
 
-    def __init__(self, network):
+    def __init__(self, network, is_inspectable=False):
         # type: (PNetwork) -> None
         assert isinstance(network, PNetwork)
         self.network = network
         self.size = None
         self.jacobian = None
+        self._is_inspectable = is_inspectable
 
     @abstractmethod
     def solve_system(self):
@@ -27,9 +28,9 @@ class Solver(object):
         partial_flow = 0
         cur_node = self.network.node_at(node_index)
         for pipe in cur_node.get_input_pipes():
-            partial_flow += pipe.get_gpm_flow()
+            partial_flow += pipe.calculate_gpm_flow()
         for pipe in cur_node.get_output_pipes():
-            partial_flow -= pipe.get_gpm_flow()
+            partial_flow -= pipe.calculate_gpm_flow()
         partial_flow -= cur_node.get_output_flow('gpm')
         return partial_flow
 
@@ -53,11 +54,11 @@ class Solver(object):
 
     def _cell_jacob(self, row_index, col_index):
         partial_jac = 0
-        all_nodes = self.network.get_nodes()
-        evaluated_node = all_nodes[col_index]
-        for connected_pipe in all_nodes[row_index].get_input_pipes():
+        evaluated_node = self.network.node_at(col_index)
+        reference_node = self.network.node_at(row_index)
+        for connected_pipe in reference_node.get_input_pipes():
             partial_jac += connected_pipe.get_node_jacobian(evaluated_node)
-        for connected_pipe in all_nodes[row_index].get_output_pipes():
+        for connected_pipe in reference_node.get_output_pipes():
             partial_jac -= connected_pipe.get_node_jacobian(evaluated_node)
         return partial_jac
 
@@ -80,9 +81,9 @@ class Solver(object):
 
 
 class UserSolver(Solver):
-    def __init__(self, network):
+    def __init__(self, network, is_inspectable=False):
         # type: (PNetwork) -> None
-        Solver.__init__(self, network)
+        Solver.__init__(self, network, is_inspectable)
 
     def solve_system(self):
         self.prepare_solving_conditions()
@@ -107,9 +108,8 @@ class UserSolver(Solver):
             delta = -np.linalg.solve(self.jacobian, f_results)
             energy_vector = np.add(energy_vector, delta)
             self._update_energies(energy_vector)
-            # self._inspect(energy_vector)
             iteration += 1
-        # print iteration
+        print iteration
 
     def fill_jacobian(self):
         for cont1 in range(self.size):
@@ -118,6 +118,17 @@ class UserSolver(Solver):
                 col_index = self._active_indexes[cont2]
                 self.jacobian[cont1][cont2] = self._cell_jacob(row_index,
                                                                col_index)
+        if self._is_inspectable:
+            self.print_jacobian()
+
+    def print_jacobian(self):
+        # print len(self.jacobian)
+        for row in self.jacobian:
+            print "[",
+            for elem in row:
+                print "{:7.2f}".format(elem),
+            print "]"
+        print
 
     def _update_energies(self, energy_vector):
         for index in range(self.size):
@@ -157,7 +168,7 @@ class RemoteNozzleSolver(Solver):
                 self._update_solved_nozzles()
             cont += 1
         for pair in self._nozzle_index_solved_status_hash:
-            output_flow -= self.network.edge_at(pair[0]).get_gpm_flow()
+            output_flow -= self.network.edge_at(pair[0]).calculate_gpm_flow()
         input_index = self.network.search_input_index()
         self.network.node_at(input_index).set_output_flow(output_flow, 'gpm')
 
@@ -173,8 +184,8 @@ class RemoteNozzleSolver(Solver):
                 self._nozzle_index_solved_status_hash.append([noz_index, False])
 
     def _all_nozzles_solved(self):
-        for this_nozzle_done in self._nozzle_index_solved_status_hash:
-            if not this_nozzle_done[1]:
+        for nozzle_number_status_pair in self._nozzle_index_solved_status_hash:
+            if not nozzle_number_status_pair[1]:
                 return False
         return True
 
@@ -214,11 +225,8 @@ class RemoteNozzleSolver(Solver):
         guess = np.zeros([self.size, 1])
         for cont in range(self.size):
             if self._active_indexes[cont] == self.unplugged_node_index:
-                assert isinstance(self._deleted_edge, Nozzle)
-                nozzle_pressure = self.network.node_at(
-                    self.unplugged_node_index).get_pressure('psi')
-                nozzle_k_factor = self._deleted_edge.get_factor('gpm/psi^0.5')
-                guess[cont][0] = sqrt(nozzle_pressure) * nozzle_k_factor
+                out_node = self.network.node_at(self.unplugged_node_index)
+                guess[cont][0] = out_node.get_output_flow('gpm')
             else:
                 guess[cont][0] = random.uniform(min_energy, max_energy)
                 cur_node = self.network.node_at(self._active_indexes[cont])
@@ -235,6 +243,7 @@ class RemoteNozzleSolver(Solver):
             energy_vector = np.add(energy_vector, delta)
             self._update_energies(energy_vector)
             iteration += 1
+        # print "There were %d iterations" % iteration
 
     def fill_jacobian(self):
         for cont1 in range(self.size):

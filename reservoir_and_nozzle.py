@@ -73,7 +73,7 @@ reservoir_solve = UserSolver(network)
 reservoir_solve.solve_system()
 
 for edge in network.get_edges():
-    print "%s) flow: %8.4f" % (edge.name, edge.get_gpm_flow())
+    print "%s) flow: %8.4f" % (edge.name, edge.calculate_gpm_flow())
 
 for node in network.get_nodes():
     if isinstance(node, ConnectionNode):

@@ -76,7 +76,7 @@ network_nodes[4].set_energy(energy_4, 'psi')
 network_nodes[5].set_energy(energy_5, 'psi')
 
 
-print network_pipes[0].get_gpm_flow()
+print network_pipes[0].calculate_gpm_flow()
 print "That was pipe #0"
 print
 
@@ -94,9 +94,9 @@ def f_equations():
         partial_flow = 0
         f_node = network_nodes[active_node]
         for pipe in f_node.get_input_pipes():
-            partial_flow += pipe.get_gpm_flow()
+            partial_flow += pipe.calculate_gpm_flow()
         for pipe in f_node.get_output_pipes():
-            partial_flow -= pipe.get_gpm_flow()
+            partial_flow -= pipe.calculate_gpm_flow()
         resp[active_nodes.index(active_node)][0] = partial_flow
     return resp
 

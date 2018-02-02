@@ -54,7 +54,8 @@ class UserDefinedNetworks(unittest.TestCase):
         self.nozzle_end.set_elevation(23, 'm')
         self.nozzle0.set_factor(1.2, 'gpm/psi^0.5')
         user_defined.prepare_solving_conditions()
-        flow0 = self.pipe0.get_gpm_flow() - self.nozzle0.get_gpm_flow()
+        pipe0_gpm_flow = self.pipe0.calculate_gpm_flow()
+        flow0 = pipe0_gpm_flow - self.nozzle0.calculate_gpm_flow()
         self.assertEqual(float(user_defined.f_equations()), flow0)
 
 
@@ -112,7 +113,7 @@ class ExampleTests(unittest.TestCase):
         test_flows = [1041.6261, -318.1786, 723.44747, 379.51588, 343.9316]
         for cont in range(number_of_edges):
             cur_edge = self.pipe_network.edge_at(cont)
-            cur_flow = cur_edge.get_gpm_flow()
+            cur_flow = cur_edge.get_vol_flow('gpm')
             self.assertAlmostEquals(cur_flow, test_flows[cont], 4)
 
     def check_4_reservoir_pressures(self):
@@ -198,9 +199,9 @@ class ExampleTests(unittest.TestCase):
     def check_reservoir_nozzle_edge_flows(self):
         edge_flows = [9.80918, 27.1517, 36.96088, 24.31309, 12.09608,
                       12.64779, 12.21701, 12.09608]
-        for edge_index in range(8):
-            cur_flow = self.pipe_network.edge_at(edge_index).get_gpm_flow()
-            self.assertAlmostEqual(cur_flow, edge_flows[edge_index], 4)
+        for e_index in range(8):
+            cur_flow = self.pipe_network.edge_at(e_index).calculate_gpm_flow()
+            self.assertAlmostEqual(cur_flow, edge_flows[e_index], 4)
 
     def connect_edge_to_up_node_and_down_node(self, edge_index, up_node,
                                               down_node):
@@ -271,7 +272,7 @@ class ExampleTests(unittest.TestCase):
         checked_flows = [30.5718, 20.1028, 10, 10.4689, 10.1028, 10]
         edges = self.pipe_network.get_edges()
         for cont in range(len(edges)):
-            cur_flow = edges[cont].get_gpm_flow()
+            cur_flow = edges[cont].calculate_gpm_flow()
             self.assertAlmostEqual(cur_flow, checked_flows[cont], 4)
 
 

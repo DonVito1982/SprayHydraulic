@@ -43,7 +43,7 @@ class Pressure(Measure):
 
 class Length(Measure):
     """
-    Serves to instantiate elevation measures
+    Serves to instantiate elevation or length measures
     """
     units = ['m', 'ft', 'in', 'mm']
     ft_to_mm = IN_TO_MM * 12

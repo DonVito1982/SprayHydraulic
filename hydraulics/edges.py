@@ -8,7 +8,7 @@ class Edge(object):
     __metaclass__ = ABCMeta
 
     def __init__(self):
-        self.vol_flow = None
+        self._vol_flow = None
         self._name = None
         self._input_node = None
         self._output_node = None
@@ -28,16 +28,16 @@ class Edge(object):
         self._name = str(name)
 
     def set_vol_flow(self, value, unit):
-        if self.vol_flow:
-            self.vol_flow.set_single_value(value, unit)
+        if self._vol_flow:
+            self._vol_flow.set_single_value(value, unit)
         else:
-            self.vol_flow = physics.VolFlow(value, unit)
+            self._vol_flow = physics.VolFlow(value, unit)
 
     def get_vol_flow(self, unit):
-        return self.vol_flow.values[unit]
+        return self._vol_flow.values[unit]
 
     @abstractmethod
-    def get_gpm_flow(self):
+    def calculate_gpm_flow(self):
         pass
 
     @abstractmethod
@@ -93,7 +93,7 @@ class Nozzle(Edge):
     def get_required_pressure(self, unit):
         return self._required_pressure.values[unit]
 
-    def get_gpm_flow(self):
+    def calculate_gpm_flow(self):
         in_ene = self.input_node.get_energy('psi')
         out_ene = self.output_node.get_energy('psi')
         if in_ene - out_ene == 0:
@@ -110,7 +110,8 @@ class Nozzle(Edge):
         if self.input_node == node:
             k_factor = self.get_factor('gpm/psi^0.5')
             diff = node.get_energy('psi') - self.output_node.get_energy('psi')
-            result += (k_factor * 0.5) / sqrt(abs(k_factor * diff))
+            # result += (k_factor * 0.5) / sqrt(abs(k_factor * diff))
+            result += (k_factor * 0.5) / sqrt(abs(diff))
         return result
 
     def is_complete(self):
@@ -201,7 +202,7 @@ class Pipe(Edge):
         pressure_loss = physics.Pressure(delta_press, 'psi')
         return pressure_loss.values[unit]
 
-    def get_gpm_flow(self):
+    def calculate_gpm_flow(self):
         in_ene = self.input_node.get_energy('psi')
         out_ene = self.output_node.get_energy('psi')
         if in_ene - out_ene == 0:
@@ -253,9 +254,11 @@ class Pipe(Edge):
 
 class ANSIPipe(Pipe):
     schedules = ('Std', '80')
-    in_diams = {2: (2.067, 1.939),
+    in_diams = {1: (1.049, 0.957),
+                2: (2.067, 1.939),
                 3: (3.068, 2.9)}
-    mm_diams = {50: (52.48, 49.22),
+    mm_diams = {25: (26.64, 24.3),
+                50: (52.48, 49.22),
                 80: (77.92, 73.66)}
 
     def __init__(self):
@@ -273,7 +276,7 @@ class ANSIPipe(Pipe):
     def nominal_diameter(self, diameter):
         self._nominal_diameter = diameter
         if self._schedule and self._unit:
-            self.set_diam()
+            self._set_diam()
 
     @property
     def diam_unit(self):
@@ -283,7 +286,7 @@ class ANSIPipe(Pipe):
     def diam_unit(self, unit):
         self._unit = unit
         if self._schedule and self._nominal_diameter:
-            self.set_diam()
+            self._set_diam()
 
     @property
     def schedule(self):
@@ -293,9 +296,9 @@ class ANSIPipe(Pipe):
     def schedule(self, schedule):
         self._schedule = str(schedule)
         if self._nominal_diameter and self._unit:
-            self.set_diam()
+            self._set_diam()
 
-    def set_diam(self):
+    def _set_diam(self):
         sch_index = self.schedules.index(self.schedule)
         nom_diam = self.nominal_diameter
         if self._unit == 'in':

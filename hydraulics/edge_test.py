@@ -188,7 +188,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_c_coefficient(100)
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10.75, 'in')
-        self.sys_pipe.get_gpm_flow()
+        self.sys_pipe.calculate_gpm_flow()
         self.assertClose(self.sys_pipe.get_vol_flow('gpm'), 1135.4647, 5)
 
     def test_pipe_negative_energy_flow(self):
@@ -203,7 +203,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_c_coefficient(100)
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10.75, 'in')
-        self.sys_pipe.get_gpm_flow()
+        self.sys_pipe.calculate_gpm_flow()
         self.assertClose(self.sys_pipe.get_vol_flow('gpm'), -1135.4647, 5)
 
     def test_pipe_zero_energy_flow(self):
@@ -218,7 +218,7 @@ class PipeTest(unittest.TestCase):
         self.sys_pipe.set_c_coefficient(100)
         self.sys_pipe.set_length(100, 'm')
         self.sys_pipe.set_inner_diam(10.75, 'in')
-        self.sys_pipe.get_gpm_flow()
+        self.sys_pipe.calculate_gpm_flow()
         self.assertAlmostEqual(self.sys_pipe.get_vol_flow('gpm'), 0, 5)
 
     def test_jacobian(self):
@@ -322,7 +322,7 @@ class NozzleTests(unittest.TestCase):
         self.out_node.set_elevation(5, 'm')
         self.nozzle0.input_node = self.in_node
         self.nozzle0.output_node = self.out_node
-        nozzle_flow = self.nozzle0.get_gpm_flow()
+        nozzle_flow = self.nozzle0.calculate_gpm_flow()
         self.assertAlmostEqual(nozzle_flow, 12)
 
     def test_required_pressure(self):
