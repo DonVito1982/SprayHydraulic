@@ -1,18 +1,29 @@
+from math import log10
+
+import matplotlib.pyplot as plt
+import random
 from hydraulics.edges import ANSIPipe, Nozzle
 from hydraulics.eductor import Eductor
-from hydraulics.nodes import EndNode, ConnectionNode
+from hydraulics.nodes import EndNode, ConnectionNode, EductorInlet, \
+    EductorOutlet
 from hydraulics.pipe_network import PNetwork
 from hydraulics.solvers import UserSolver
 
 problem = PNetwork()
-
+random.seed(123)
 # SET NODES
-system_nodes = ['e', 'c', 'c', 'c', 'c', 'c', 'c', 'e', 'e', 'c', 'e', 'c', 'e']
+system_nodes = ['e', 'i', 'i', 'o', 'o', 'c', 'c', 'e', 'e', 'c', 'e', 'c', 'e']
 elevations = [30,   0,   0,   0,   0,   2,   2,   2,   2,   2,   2,   2,   2]
 
 for index in range(len(system_nodes)):
     if system_nodes[index] == 'e':
         cur_node = EndNode()
+    elif system_nodes[index] == 'i':
+        cur_node = EductorInlet()
+        cur_node.set_pressure(0, 'psi')
+    elif system_nodes[index] == 'o':
+        cur_node = EductorOutlet()
+        cur_node.set_pressure(0, 'psi')
     else:
         cur_node = ConnectionNode()
         cur_node.set_pressure(0, 'psi')
@@ -55,7 +66,6 @@ edge_types = "ppeeppnnpnpn"
 # INCLUDE EDGES IN NETWORK
 typ_dict = {'p': pipes, 'n': nozzles, 'e': eductors}
 for carac in edge_types:
-    #print carac
     problem.add_edge(typ_dict[carac].pop(0))
     problem.set_pipe_name(-1, "%s%d" % (carac, len(problem.get_edges()) - 1))
 
@@ -99,7 +109,6 @@ for n in range(12):
     out_name = edge._output_node.name
     if edge.is_complete(): print "Complete",
     print "{:3}: Input: {:3} -  output:{}".format(edge.name, in_name, out_name)
-    # print "%-3s: Input: %-3s  -   output: %s" % (edge.name, in_name, out_name)
 
 user_solver = UserSolver(problem, False)
 user_solver.solve_system()
@@ -109,6 +118,23 @@ for n in range(12):
     input_pressure = edge.input_node.get_pressure('psi')
     flow = edge.get_vol_flow('gpm')
     output_pressure = edge._output_node.get_pressure('psi')
-    templa = "{:3}: from {:5.2f} psi flows {:.2f} gpm to {:5.2f} psi"
+    templa = "{:3}: from {:6.3f} psi flows {:.3f} gpm to {:6.3f} psi"
     print templa.format(edge.name, input_pressure, flow, output_pressure)
 
+n = len(user_solver.active_energy_vectors)
+
+
+def signed_log(vector, pos):
+    return (vector[pos] / abs(vector[pos])) * log10(abs(vector[pos]))
+
+e2_in = [signed_log(itera, 0) for itera in user_solver.active_energy_vectors]
+e2_out = [signed_log(itera, 2) for itera in user_solver.active_energy_vectors]
+e1_energies = [iteration[1] for iteration in user_solver.active_energy_vectors]
+outlet1 = [iteration[3] for iteration in user_solver.active_energy_vectors]
+# print e0_energies
+plt.plot(range(n), e2_in, 'go'
+         , range(n), e2_out, 'gs') #,
+         # range(n), e1_energies, 'ro', range(n), outlet1, 'rs')
+plt.ylabel("energy (psi)")
+plt.xlabel("iteration")
+plt.show()

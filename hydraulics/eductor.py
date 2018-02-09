@@ -1,7 +1,7 @@
 import physics
 
 from edges import Edge
-from nodes import ConnectionNode
+from nodes import EductorInlet, EductorOutlet
 from math import sqrt
 
 
@@ -17,29 +17,35 @@ class Eductor(Edge):
         output_energy = self.output_node.get_energy('psi')
         aug_dif = (input_energy - output_energy) / 0.35
         k_fac = self.get_factor('gpm/psi^0.5')
-        q_flow = k_fac * aug_dif / sqrt(abs(aug_dif))
-        '''
+        q_flow1 = k_fac * aug_dif / sqrt(abs(aug_dif))
+
         pressure = self.input_node.get_pressure('psi')
         k_fac = self.get_factor('gpm/psi^0.5')
-        q_flow = pressure * k_fac / sqrt(pressure)
-        self.output_node.set_pressure(pressure*.65, 'psi')
-        '''
-        # if aug_dif > 0:
-        #     pressure = self.input_node.get_pressure('psi')
-        #     self.output_node.set_pressure(pressure*.65, 'psi')
+        q_flow2 = pressure * k_fac / sqrt(abs(pressure))
+        fac = 0
+        q_flow = (1 - fac) * q_flow1 + fac * q_flow2
+
         self.set_vol_flow(q_flow, 'gpm')
         return q_flow
 
+    def adjust_pressure(self):
+        pressure = self.input_node.get_pressure('psi')
+        self.output_node.set_pressure(pressure*0.65, 'psi')
+
     def get_node_jacobian(self, node):
         result = 0
+        fac = 0.5
         if self.input_node == node:
+            k_factor = self.get_factor('gpm/psi^0.5') * 0.5
+            result1 = k_factor / sqrt(abs(node.get_pressure('psi')))
             k_factor = self.get_factor('gpm/psi^0.5') * 0.5 / sqrt(0.35)
             diff = node.get_energy('psi') - self.output_node.get_energy('psi')
-            result += k_factor / sqrt(abs(diff))
+            result2 = k_factor / sqrt(abs(diff))
+            result += fac * result1 + (1 - fac) * result2
         if self.output_node == node:
             k_factor = self.get_factor('gpm/psi^0.5') * 0.5 / sqrt(0.35)
             diff = self.input_node.get_energy('psi') - node.get_energy('psi')
-            result -= k_factor / sqrt(abs(diff))
+            result -= (1 - fac) * k_factor / sqrt(abs(diff))
         return result
 
     def is_complete(self):
@@ -58,8 +64,8 @@ class Eductor(Edge):
     def input_node(self, node):
         if self._input_node:
             raise IndexError("Already have input node")
-        if not isinstance(node, ConnectionNode):
-            raise ValueError
+        if not isinstance(node, EductorInlet):
+            raise TypeError
         self._input_node = node
 
     @property
@@ -70,8 +76,8 @@ class Eductor(Edge):
     def output_node(self, node):
         if self._output_node:
             raise IndexError
-        if not isinstance(node, ConnectionNode):
-            raise ValueError
+        if not isinstance(node, EductorOutlet):
+            raise TypeError
         self._output_node = node
 
     def set_factor(self, value, unit):
@@ -98,3 +104,7 @@ class Eductor(Edge):
     def set_vol_flow(self, value, unit):
         super(Eductor, self).set_vol_flow(value, unit)
         self.output_node.set_output_flow(-value*self.concentration, unit)
+
+    def is_eductor(self):
+        ed = self._k_factor
+        return ed

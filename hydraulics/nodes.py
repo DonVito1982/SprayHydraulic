@@ -1,6 +1,7 @@
 from abc import abstractmethod, ABCMeta
 
 from hydraulics import physics
+# from hydraulics.eductor import Eductor
 
 
 class Node(object):
@@ -95,9 +96,76 @@ class ConnectionNode(Node):
 
 
 class EndNode(Node):
+    def __init__(self):
+        Node.__init__(self)
+        self._pressure = physics.Pressure(0, 'psi')
+
+    def set_pressure(self, value, unit):
+        self._pressure.set_single_value(value, unit)
+        self.energy = None
+
     def get_pressure(self, unit):
-        return 0
+        return self._pressure.values[unit]
 
 
 class InputNode(ConnectionNode):
     pass
+
+
+class EductorInlet(ConnectionNode):
+    def set_pressure(self, value, unit):
+        if self._pressure:
+            self._pressure.set_single_value(value, unit)
+            # print len(self.get_output_pipes())
+            for edge in self.get_output_pipes():
+                try:
+                    edge.is_eductor()
+                    edge.output_node.influence_pressure(value*.65, unit)
+                    # print "inicia"
+                    # print "{} asi".format(guess)
+                except AttributeError:
+                    pass
+        else:
+            self._pressure = physics.Pressure(value, unit)
+        self.energy = None
+
+    # def get_energy(self, unit):
+    #     super(EductorInlet, self).get_energy(unit)
+    #     # print "Got energy inlet"
+
+
+class EductorOutlet(ConnectionNode):
+    def __init__(self):
+        super(EductorOutlet, self).__init__()
+        self._reference_pressure = None
+
+    def influence_pressure(self, value, unit):
+        # print "influencing {}".format(self.name)
+        if self._reference_pressure:
+            self._reference_pressure.set_single_value(value, unit)
+        else:
+            self._reference_pressure = physics.Pressure(value, unit)
+        self.energy = None
+        current = self.get_pressure(unit)
+        if self._pressure:
+            current = self.get_pressure(unit)
+            average = (value + current) / 2
+            self._pressure.set_single_value(average, unit)
+        return "mas o menos {:.2f} {}".format((value + current)/2, unit)
+
+    def set_pressure(self, value, unit):
+        if self._pressure:
+            if self._reference_pressure:
+                reference = self._reference_pressure.values[unit]
+                factor = 0.
+                modified = factor * reference + (1 - factor) * value
+                self._pressure.set_single_value(modified, unit)
+            else:
+                self._pressure.set_single_value(value, unit)
+        else:
+            self._pressure = physics.Pressure(value, unit)
+        self.energy = None
+
+    # def get_energy(self, unit):
+    #     super(EductorOutlet, self).get_energy(unit)
+    #     # print "Got energy outlet"

@@ -19,6 +19,7 @@ class Solver(object):
         self.size = None
         self.jacobian = None
         self._is_inspectable = is_inspectable
+        self.active_energy_vectors = []
 
     @abstractmethod
     def solve_system(self):
@@ -102,14 +103,28 @@ class UserSolver(Solver):
     def _iterate(self, energy_vector):
         iteration = 0
         f_results = self.f_equations()
-        while not self.has_converged(f_results):
+        while not self.has_converged(f_results) and iteration < 35:
             self.fill_jacobian()
             f_results = self.f_equations()
             delta = -np.linalg.solve(self.jacobian, f_results)
             energy_vector = np.add(energy_vector, delta)
+            self.feed_partial_results(energy_vector)
             self._update_energies(energy_vector)
             iteration += 1
-        print iteration
+        if self._is_inspectable:
+            print iteration
+            self.print_f(f_results)
+
+    def feed_partial_results(self, vector):
+        energy_vector = [pair[0] for pair in vector]
+        self.active_energy_vectors.append(energy_vector)
+
+    def print_f(self, vertical_v):
+        print vertical_v
+        deviation = 0
+        for cont in range(self.size):
+            deviation += abs(vertical_v[cont][0])
+        print deviation
 
     def fill_jacobian(self):
         for cont1 in range(self.size):
@@ -123,11 +138,19 @@ class UserSolver(Solver):
 
     def print_jacobian(self):
         # print len(self.jacobian)
+        print "        ",
+        for x_index in range(self.size):
+            this_index = self._active_indexes[x_index]
+            print "{:7}".format(self.network.node_at(this_index).name),
+        print
+        x_index = 0
         for row in self.jacobian:
-            print "[",
+            this_index = self._active_indexes[x_index]
+            print "{:3} [".format(self.network.node_at(this_index).name),
             for elem in row:
                 print "{:7.2f}".format(elem),
             print "]"
+            x_index += 1
         print
 
     def _update_energies(self, energy_vector):
